@@ -133,7 +133,7 @@ LLM_PROVIDER=groq
 ### Paso 5: Ejecutar LiveCopilot
 
 ```powershell
-python main.py
+.\venv\Scripts\python.exe main.py
 ```
 
 1. Verás aparecer el HUD flotante translúcido en la esquina inferior derecha de tu pantalla.
