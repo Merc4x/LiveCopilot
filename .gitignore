@@ -1,0 +1,55 @@
+# ==============================================================================
+# LiveCopilot - .gitignore
+# ==============================================================================
+
+# Entorno virtual de Python
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Variables de entorno y credenciales secretas (¡NUNCA SUBIR A GITHUB!)
+.env
+*.env
+!.env.example
+
+# Caché de Python y bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# PyInstaller y compiladores
+build/
+dist/
+*.spec
+*.manifest
+
+# Binarios e instaladores generados
+*.exe
+*.msi
+*.zip
+*.tar.gz
+
+# Archivos de logs
+*.log
+*.log.*
+
+# Configuraciones de editores e IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+
+# Sistema operativo
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

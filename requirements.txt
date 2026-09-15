@@ -1,0 +1,18 @@
+# Core UI & Hardware Audio
+PyQt6>=6.6.0
+soundcard>=0.4.3
+numpy>=1.24.0,<2.0.0
+
+# Deep Learning & VAD
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# STT (Local & Cloud)
+faster-whisper>=1.0.0
+groq>=0.9.0
+
+# LLM Providers & Utilities
+google-genai>=0.1.0
+google-generativeai>=0.8.0
+python-dotenv>=1.0.0
+requests>=2.31.0
