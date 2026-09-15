@@ -70,7 +70,8 @@ LiveCopilot/
 
 En **PowerShell** o **Símbolo del sistema (CMD)**:
 ```powershell
-cd C:\Users\23429\.gemini\antigravity-ide\scratch\LiveCopilot
+git clone https://github.com/Thekrownn/LiveCopilot.git
+cd LiveCopilot
 ```
 
 ---
