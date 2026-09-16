@@ -2,10 +2,11 @@
 LiveCopilot - Minimalist Floating Heads-Up Display (PyQt6)
 Frameless, semi-transparent, pinned on top, draggable HUD
 with guaranteed 60 FPS performance, dynamic multilingual response switching,
-and Windows taskbar integration.
+and clean professional typography without emojis.
 """
 
 import logging
+import os
 import sys
 from typing import Callable, Optional
 
@@ -29,41 +30,47 @@ from PyQt6.QtWidgets import (
 
 logger = logging.getLogger("LiveCopilot.UI")
 
-# Available response languages for live on-the-fly switching
+# Clean, professional language list without emojis
 AVAILABLE_RESPONSE_LANGUAGES = [
-    ("🇺🇸 English", "English"),
-    ("🇨🇳 Chinese", "Chinese (Mandarin)"),
-    ("🇪🇸 Spanish", "Spanish"),
-    ("🇫🇷 French", "French"),
-    ("🇩🇪 German", "German"),
-    ("🇮🇹 Italian", "Italian"),
-    ("🇵🇹 Portuguese", "Portuguese"),
-    ("🇯🇵 Japanese", "Japanese"),
-    ("🇰🇷 Korean", "Korean"),
-    ("🇷🇺 Russian", "Russian"),
-    ("🇸🇦 Arabic", "Arabic"),
-    ("🇮🇳 Hindi", "Hindi"),
+    ("English", "English"),
+    ("Chinese (Mandarin)", "Chinese (Mandarin)"),
+    ("Spanish", "Spanish"),
+    ("French", "French"),
+    ("German", "German"),
+    ("Italian", "Italian"),
+    ("Portuguese", "Portuguese"),
+    ("Japanese", "Japanese"),
+    ("Korean", "Korean"),
+    ("Russian", "Russian"),
+    ("Arabic", "Arabic"),
+    ("Hindi", "Hindi"),
 ]
 
 
 def get_app_icon() -> QIcon:
-    """Generate a crisp high-resolution icon for the Windows taskbar and system window."""
+    """Load application icon from assets, or generate a crisp vector fallback."""
+    icon_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png"
+    )
+    if os.path.exists(icon_path):
+        return QIcon(icon_path)
+
+    # Clean geometric vector fallback
     pixmap = QPixmap(64, 64)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-    # Dark rounded background with glowing cyan border
-    painter.setBrush(QColor(18, 18, 18, 240))
+    painter.setBrush(QColor(14, 16, 20, 245))
     painter.setPen(QPen(QColor(0, 245, 212), 2))
     painter.drawRoundedRect(4, 4, 56, 56, 14, 14)
 
-    # Lightning bolt symbol ⚡
-    painter.setPen(QPen(QColor(0, 245, 212)))
-    font = QFont("Segoe UI Emoji", 26)
-    font.setBold(True)
-    painter.setFont(font)
-    painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "⚡")
+    painter.setPen(QPen(QColor(0, 245, 212), 3))
+    painter.drawLine(14, 32, 22, 18)
+    painter.drawLine(22, 18, 30, 46)
+    painter.drawLine(30, 46, 38, 24)
+    painter.drawLine(38, 24, 44, 36)
+    painter.drawLine(44, 36, 50, 32)
     painter.end()
     return QIcon(pixmap)
 
@@ -142,99 +149,114 @@ class FloatingHUD(QWidget):
         self._force_windows_taskbar()
 
     def _init_styles(self):
-        """CSS stylesheets featuring modern dark glassmorphism and mint/cyan accents."""
+        """CSS stylesheets featuring modern dark glassmorphism, clean typography, and neon cyan accents."""
         self.setStyleSheet("""
             QWidget#MainContainer {
-                background-color: rgba(18, 18, 18, 0.90);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 16px;
+                background-color: rgba(14, 16, 20, 0.94);
+                border: 1px solid rgba(255, 255, 255, 0.10);
+                border-radius: 14px;
             }
             
             /* Header Bar */
             QFrame#HeaderBar {
                 background: transparent;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-                padding: 2px 4px 6px 4px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                padding: 0px 2px 6px 2px;
             }
             
             QLabel#AppTitle {
                 color: #FFFFFF;
-                font-family: 'Segoe UI', 'Inter', sans-serif;
-                font-size: 13px;
-                font-weight: 700;
-                letter-spacing: 0.5px;
+                font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
+                font-size: 11.5px;
+                font-weight: 800;
+                letter-spacing: 1.2px;
             }
             
-            QLabel#StatusDot {
-                font-size: 11px;
+            /* Hardware/State LED Indicator */
+            QLabel#StatusIndicator {
+                min-width: 7px;
+                max-width: 7px;
+                min-height: 7px;
+                max-height: 7px;
+                border-radius: 3px;
+                background-color: #00F5D4;
+                margin-right: 4px;
             }
             
             QLabel#StatusText {
-                color: #A0A0A0;
+                color: #8E95A5;
                 font-family: 'Segoe UI', 'Inter', sans-serif;
                 font-size: 11px;
-                font-weight: 500;
+                font-weight: 600;
+                letter-spacing: 0.3px;
             }
             
             /* Header Action Buttons */
             QPushButton.HeaderBtn {
-                background-color: rgba(255, 255, 255, 0.05);
-                color: #CCCCCC;
+                background-color: rgba(255, 255, 255, 0.04);
+                color: #B5BCC9;
                 border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 6px;
+                border-radius: 5px;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 11px;
-                padding: 4px 8px;
-                font-weight: bold;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.6px;
+                padding: 4px 9px;
             }
             QPushButton.HeaderBtn:hover {
-                background-color: rgba(255, 255, 255, 0.14);
+                background-color: rgba(255, 255, 255, 0.12);
                 color: #FFFFFF;
+                border-color: rgba(255, 255, 255, 0.16);
+            }
+            QPushButton#BtnPause {
+                color: #00F5D4;
+                border-color: rgba(0, 245, 212, 0.25);
+            }
+            QPushButton#BtnPause:hover {
+                background-color: rgba(0, 245, 212, 0.15);
             }
             QPushButton#BtnMinimize:hover {
-                background-color: rgba(0, 245, 212, 0.20);
-                color: #00F5D4;
-                border: 1px solid rgba(0, 245, 212, 0.4);
+                background-color: rgba(255, 255, 255, 0.12);
+                color: #FFFFFF;
             }
             QPushButton#CloseBtn:hover {
-                background-color: rgba(239, 68, 68, 0.8);
+                background-color: rgba(239, 68, 68, 0.85);
                 color: #FFFFFF;
-                border: 1px solid rgba(239, 68, 68, 0.9);
+                border-color: rgba(239, 68, 68, 0.9);
             }
             
             /* Content Cards */
             QFrame#CardHeard {
-                background-color: rgba(25, 28, 32, 0.70);
+                background-color: rgba(22, 25, 31, 0.75);
                 border: 1px solid rgba(255, 255, 255, 0.07);
-                border-radius: 10px;
+                border-radius: 9px;
                 padding: 8px 12px;
             }
             
             QFrame#CardSuggestion {
-                background-color: rgba(0, 245, 212, 0.05);
-                border: 1px solid rgba(0, 245, 212, 0.30);
-                border-radius: 10px;
+                background-color: rgba(0, 245, 212, 0.04);
+                border: 1px solid rgba(0, 245, 212, 0.28);
+                border-radius: 9px;
                 padding: 10px 12px;
             }
             
             QLabel#LabelHeardTag {
-                color: #9CA3AF;
+                color: #7E8695;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 10px;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.8px;
+                font-size: 9.5px;
+                font-weight: 800;
+                letter-spacing: 1.0px;
             }
             
             QLabel#TextHeardContent {
-                color: #F3F4F6;
+                color: #E6E8EC;
                 font-family: 'Segoe UI', sans-serif;
                 font-size: 13px;
-                line-height: 1.4;
+                line-height: 1.45;
             }
             
             QLabel#TextHeardTrans {
-                color: #93C5FD;
+                color: #7DD3FC;
                 font-family: 'Segoe UI', sans-serif;
                 font-size: 12px;
                 font-style: italic;
@@ -244,33 +266,32 @@ class FloatingHUD(QWidget):
             QLabel#LabelSugTag {
                 color: #00F5D4;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 10px;
+                font-size: 9.5px;
                 font-weight: 800;
-                text-transform: uppercase;
-                letter-spacing: 0.8px;
+                letter-spacing: 1.0px;
             }
             
             /* Language Switcher Selector in Suggestion Header */
             QComboBox#ComboRespLang {
-                background-color: rgba(0, 245, 212, 0.12);
-                border: 1px solid rgba(0, 245, 212, 0.35);
+                background-color: rgba(0, 245, 212, 0.09);
+                border: 1px solid rgba(0, 245, 212, 0.32);
                 border-radius: 5px;
                 color: #00F5D4;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 11px;
-                font-weight: 600;
-                padding: 2px 6px;
-                min-width: 110px;
+                font-size: 10.5px;
+                font-weight: 700;
+                padding: 2px 8px;
+                min-width: 100px;
             }
             QComboBox#ComboRespLang:hover {
-                background-color: rgba(0, 245, 212, 0.22);
-                border: 1px solid rgba(0, 245, 212, 0.60);
+                background-color: rgba(0, 245, 212, 0.18);
+                border: 1px solid rgba(0, 245, 212, 0.55);
             }
             QComboBox#ComboRespLang QAbstractItemView {
-                background-color: #181A20;
+                background-color: #12141A;
                 color: #FFFFFF;
                 selection-background-color: #00F5D4;
-                selection-color: #0B1917;
+                selection-color: #0A1014;
                 border: 1px solid rgba(0, 245, 212, 0.35);
                 border-radius: 6px;
                 padding: 4px;
@@ -285,20 +306,20 @@ class FloatingHUD(QWidget):
             }
             
             QLabel#TextSugPron {
-                color: #FDE047;
+                color: #FACC15;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 12.5px;
+                font-size: 12px;
                 font-weight: 700;
                 font-style: italic;
-                background-color: rgba(253, 224, 71, 0.08);
-                border: 1px solid rgba(253, 224, 71, 0.22);
-                border-radius: 6px;
+                background-color: rgba(250, 204, 21, 0.07);
+                border: 1px solid rgba(250, 204, 21, 0.20);
+                border-radius: 5px;
                 padding: 4px 8px;
-                margin-top: 4px;
+                margin-top: 3px;
             }
             
             QLabel#TextSugEs {
-                color: #D1D5DB;
+                color: #9CA3AF;
                 font-family: 'Segoe UI', sans-serif;
                 font-size: 11.5px;
                 margin-top: 2px;
@@ -306,10 +327,10 @@ class FloatingHUD(QWidget):
             
             /* Audio VU Meter */
             QProgressBar#AudioMeter {
-                background-color: rgba(255, 255, 255, 0.08);
+                background-color: rgba(255, 255, 255, 0.06);
                 border-radius: 2px;
                 border: none;
-                max-height: 3px;
+                max-height: 2px;
             }
             QProgressBar#AudioMeter::chunk {
                 background-color: #00F5D4;
@@ -318,22 +339,23 @@ class FloatingHUD(QWidget):
             
             /* Footer Metrics */
             QLabel#FooterMetrics {
-                color: #6B7280;
+                color: #5A6272;
                 font-family: 'Consolas', monospace;
-                font-size: 10px;
+                font-size: 9.5px;
             }
             
             QPushButton#CopyBtn {
-                background-color: rgba(0, 245, 212, 0.12);
+                background-color: rgba(0, 245, 212, 0.10);
                 color: #00F5D4;
                 border: 1px solid rgba(0, 245, 212, 0.25);
-                border-radius: 5px;
-                font-size: 10px;
-                font-weight: 600;
-                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 9.5px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                padding: 2px 7px;
             }
             QPushButton#CopyBtn:hover {
-                background-color: rgba(0, 245, 212, 0.25);
+                background-color: rgba(0, 245, 212, 0.22);
                 color: #FFFFFF;
             }
         """)
@@ -348,7 +370,7 @@ class FloatingHUD(QWidget):
         self.container.setObjectName("MainContainer")
         shadow = QGraphicsDropShadowEffect(self)
         shadow.setBlurRadius(24)
-        shadow.setColor(QColor(0, 0, 0, 180))
+        shadow.setColor(QColor(0, 0, 0, 190))
         shadow.setOffset(0, 8)
         self.container.setGraphicsEffect(shadow)
 
@@ -357,7 +379,7 @@ class FloatingHUD(QWidget):
         container_layout.setSpacing(8)
 
         # -------------------------------------------------------------
-        # 1. Top Header Bar (Title, LED status & Window Controls)
+        # 1. Top Header Bar (Branding, State LED & Window Controls)
         # -------------------------------------------------------------
         self.header_frame = QFrame(self.container)
         self.header_frame.setObjectName("HeaderBar")
@@ -365,30 +387,44 @@ class FloatingHUD(QWidget):
         header_layout.setContentsMargins(0, 0, 0, 4)
         header_layout.setSpacing(8)
 
-        # Status indicator and title
-        self.status_dot = QLabel("🟢", self.header_frame)
-        self.status_dot.setObjectName("StatusDot")
+        # Minimalist LED indicator dot
+        self.status_dot = QLabel(self.header_frame)
+        self.status_dot.setObjectName("StatusIndicator")
 
-        self.title_label = QLabel("⚡ LiveCopilot", self.header_frame)
+        # Sleek brand title with mini logo icon
+        brand_layout = QHBoxLayout()
+        brand_layout.setSpacing(6)
+
+        logo_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png"
+        )
+        if os.path.exists(logo_path):
+            self.lbl_logo = QLabel(self.header_frame)
+            pix = QPixmap(logo_path).scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            self.lbl_logo.setPixmap(pix)
+            brand_layout.addWidget(self.lbl_logo)
+
+        self.title_label = QLabel("LIVECOPILOT", self.header_frame)
         self.title_label.setObjectName("AppTitle")
+        brand_layout.addWidget(self.title_label)
 
-        self.status_label = QLabel("Listening...", self.header_frame)
+        self.status_label = QLabel("LISTENING", self.header_frame)
         self.status_label.setObjectName("StatusText")
 
         header_layout.addWidget(self.status_dot)
-        header_layout.addWidget(self.title_label)
+        header_layout.addLayout(brand_layout)
         header_layout.addWidget(self.status_label)
         header_layout.addStretch()
 
         # Pause / Resume Button
-        self.btn_pause = QPushButton("⏸ Pause", self.header_frame)
+        self.btn_pause = QPushButton("PAUSE", self.header_frame)
         self.btn_pause.setObjectName("BtnPause")
         self.btn_pause.setProperty("class", "HeaderBtn")
         self.btn_pause.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pause.clicked.connect(self._toggle_pause_action)
 
         # Clear Button
-        self.btn_clear = QPushButton("🧹", self.header_frame)
+        self.btn_clear = QPushButton("CLEAR", self.header_frame)
         self.btn_clear.setObjectName("BtnClear")
         self.btn_clear.setProperty("class", "HeaderBtn")
         self.btn_clear.setToolTip("Clear current display")
@@ -396,15 +432,15 @@ class FloatingHUD(QWidget):
         self.btn_clear.clicked.connect(self._clear_content)
 
         # Settings Button
-        self.btn_settings = QPushButton("⚙️", self.header_frame)
+        self.btn_settings = QPushButton("SETTINGS", self.header_frame)
         self.btn_settings.setObjectName("BtnSettings")
         self.btn_settings.setProperty("class", "HeaderBtn")
-        self.btn_settings.setToolTip("Settings (API Keys & Audio Device)")
+        self.btn_settings.setToolTip("Configure API keys and audio device")
         self.btn_settings.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_settings.clicked.connect(self.request_open_settings.emit)
 
         # Minimize Button
-        self.btn_minimize = QPushButton("🗕", self.header_frame)
+        self.btn_minimize = QPushButton("—", self.header_frame)
         self.btn_minimize.setObjectName("BtnMinimize")
         self.btn_minimize.setProperty("class", "HeaderBtn")
         self.btn_minimize.setToolTip("Minimize to taskbar")
@@ -427,7 +463,7 @@ class FloatingHUD(QWidget):
 
         container_layout.addWidget(self.header_frame)
 
-        # Audio VU Level Meter
+        # Ultra-slim Audio VU Level Meter
         self.audio_meter = QProgressBar(self.container)
         self.audio_meter.setObjectName("AudioMeter")
         self.audio_meter.setRange(0, 100)
@@ -445,12 +481,12 @@ class FloatingHUD(QWidget):
         layout_heard.setSpacing(4)
 
         heard_tag_layout = QHBoxLayout()
-        self.label_heard_tag = QLabel("🎧 HEARD (ORIGINAL & TRANSLATION)", self.card_heard)
+        self.label_heard_tag = QLabel("INCOMING AUDIO · TRANSCRIPTION", self.card_heard)
         self.label_heard_tag.setObjectName("LabelHeardTag")
         heard_tag_layout.addWidget(self.label_heard_tag)
         heard_tag_layout.addStretch()
 
-        self.text_heard = QLabel("Waiting for system audio (WASAPI loopback)...", self.card_heard)
+        self.text_heard = QLabel("Waiting for system audio stream...", self.card_heard)
         self.text_heard.setObjectName("TextHeardContent")
         self.text_heard.setWordWrap(True)
         self.text_heard.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -478,20 +514,20 @@ class FloatingHUD(QWidget):
         sug_tag_layout = QHBoxLayout()
         sug_tag_layout.setSpacing(6)
 
-        self.label_sug_tag = QLabel("💡 HOW TO RESPOND:", self.card_sug)
+        self.label_sug_tag = QLabel("SUGGESTED RESPONSE", self.card_sug)
         self.label_sug_tag.setObjectName("LabelSugTag")
 
         # Instant target response language selector
         self.combo_resp_lang = QComboBox(self.card_sug)
         self.combo_resp_lang.setObjectName("ComboRespLang")
-        self.combo_resp_lang.setToolTip("Change the language you want to speak back in")
+        self.combo_resp_lang.setToolTip("Select target response language")
         for label, lang_value in AVAILABLE_RESPONSE_LANGUAGES:
             self.combo_resp_lang.addItem(label, lang_value)
         self.combo_resp_lang.currentIndexChanged.connect(self._on_response_language_changed)
 
-        self.btn_copy = QPushButton("Copy", self.card_sug)
+        self.btn_copy = QPushButton("COPY", self.card_sug)
         self.btn_copy.setObjectName("CopyBtn")
-        self.btn_copy.setToolTip("Copy response to clipboard")
+        self.btn_copy.setToolTip("Copy suggested phrase to clipboard")
         self.btn_copy.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_copy.clicked.connect(self._copy_suggestion_to_clipboard)
 
@@ -501,7 +537,7 @@ class FloatingHUD(QWidget):
         sug_tag_layout.addWidget(self.btn_copy)
 
         # 1. Suggested phrase to speak
-        self.text_sug = QLabel("Smart response suggestions will appear here...", self.card_sug)
+        self.text_sug = QLabel("Response suggestions will appear here...", self.card_sug)
         self.text_sug.setObjectName("TextSugContent")
         self.text_sug.setWordWrap(True)
         self.text_sug.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -590,7 +626,7 @@ class FloatingHUD(QWidget):
         if not text:
             return
         self.text_heard.setText(text)
-        self.text_heard_trans.setText("🌐 Translating...")
+        self.text_heard_trans.setText("Translating...")
         self.text_heard_trans.setVisible(True)
         if latency_ms > 0:
             self._update_footer(stt_ms=latency_ms, engine=engine_name)
@@ -607,7 +643,7 @@ class FloatingHUD(QWidget):
             # 1. Translation of what was heard
             heard_trans = (data.get("heard_trans") or data.get("trad_escuchado", "")).strip()
             if heard_trans:
-                self.text_heard_trans.setText(f"🌐 Trans: {heard_trans}")
+                self.text_heard_trans.setText(f"Translation: {heard_trans}")
                 self.text_heard_trans.setVisible(True)
             else:
                 self.text_heard_trans.setVisible(False)
@@ -620,7 +656,7 @@ class FloatingHUD(QWidget):
             # 3. Phonetic pronunciation guide
             pron = (data.get("pronunciation") or data.get("pronunciacion", "")).strip()
             if pron:
-                self.text_sug_pron.setText(f"🗣️ Say: \"{pron}\"")
+                self.text_sug_pron.setText(f"Pronounce: \"{pron}\"")
                 self.text_sug_pron.setVisible(True)
             else:
                 self.text_sug_pron.setVisible(False)
@@ -628,7 +664,7 @@ class FloatingHUD(QWidget):
             # 4. Meaning of the response
             meaning = (data.get("meaning") or data.get("trad_respuesta", "")).strip()
             if meaning:
-                self.text_sug_es.setText(f"🌐 Meaning: {meaning}")
+                self.text_sug_es.setText(f"Meaning: {meaning}")
                 self.text_sug_es.setVisible(True)
             else:
                 self.text_sug_es.setVisible(False)
@@ -649,20 +685,20 @@ class FloatingHUD(QWidget):
     def set_status(self, status: str, state_type: str = "active"):
         """
         Update visual status indicator:
-        state_type: 'active' (green/cyan), 'processing' (amber), 'paused' (gray), 'error' (red)
+        state_type: 'active' (cyan), 'processing' (amber), 'paused' (gray), 'error' (red)
         """
-        self.status_label.setText(status)
+        self.status_label.setText(status.upper())
         if state_type == "active":
-            self.status_dot.setText("🟢")
+            self.status_dot.setStyleSheet("background-color: #00F5D4;")
             self.status_label.setStyleSheet("color: #00F5D4;")
         elif state_type == "processing":
-            self.status_dot.setText("🟡")
+            self.status_dot.setStyleSheet("background-color: #F59E0B;")
             self.status_label.setStyleSheet("color: #F59E0B;")
         elif state_type == "paused":
-            self.status_dot.setText("⏸️")
-            self.status_label.setStyleSheet("color: #9CA3AF;")
+            self.status_dot.setStyleSheet("background-color: #6B7280;")
+            self.status_label.setStyleSheet("color: #6B7280;")
         elif state_type == "error":
-            self.status_dot.setText("🔴")
+            self.status_dot.setStyleSheet("background-color: #EF4444;")
             self.status_label.setStyleSheet("color: #EF4444;")
 
     def _update_footer(
@@ -690,23 +726,23 @@ class FloatingHUD(QWidget):
         """Toggle audio listening pause state."""
         self.is_paused = not self.is_paused
         if self.is_paused:
-            self.btn_pause.setText("▶ Resume")
+            self.btn_pause.setText("RESUME")
             self.btn_pause.setStyleSheet("color: #10B981; border-color: rgba(16, 185, 129, 0.4);")
             self.set_status("Paused", "paused")
         else:
-            self.btn_pause.setText("⏸ Pause")
+            self.btn_pause.setText("PAUSE")
             self.btn_pause.setStyleSheet("")
-            self.set_status("Listening...", "active")
+            self.set_status("Listening", "active")
 
         self.request_toggle_pause.emit()
 
     def _clear_content(self):
         """Clear all content text cards."""
-        self.text_heard.setText("Waiting for system audio...")
+        self.text_heard.setText("Waiting for system audio stream...")
         self.text_heard_trans.setText("")
         self.text_heard_trans.setVisible(False)
 
-        self.text_sug.setText("Smart response suggestions will appear here...")
+        self.text_sug.setText("Response suggestions will appear here...")
         self.text_sug_pron.setText("")
         self.text_sug_pron.setVisible(False)
         self.text_sug_es.setText("")
@@ -717,8 +753,8 @@ class FloatingHUD(QWidget):
     def _copy_suggestion_to_clipboard(self):
         """Copy active response suggestion to Windows clipboard."""
         text = self.text_sug.text().strip()
-        if text and text != "Smart response suggestions will appear here...":
+        if text and text != "Response suggestions will appear here...":
             clipboard = QApplication.clipboard()
             clipboard.setText(text)
-            self.btn_copy.setText("✓ Copied")
-            QTimer.singleShot(1500, lambda: self.btn_copy.setText("Copy"))
+            self.btn_copy.setText("COPIED")
+            QTimer.singleShot(1500, lambda: self.btn_copy.setText("COPY"))

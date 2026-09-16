@@ -1,26 +1,37 @@
-# LiveCopilot ⚡
+<div align="center">
+  <img src="assets/logo.png" alt="LiveCopilot Logo" width="140" />
+  <h1>LiveCopilot</h1>
+  <p><b>Real-Time Desktop Audio AI Copilot for Windows</b></p>
+  <p>Ultra-low latency audio stream capture, dual-engine speech-to-text, and conversational intelligence in a 60 FPS floating heads-up display.</p>
 
-> **Real-Time Desktop Audio AI Copilot for Windows**: Captures PC audio output (WASAPI Loopback), transcribes and translates speech in real time (meetings, classes, calls, videos), and provides instant smart suggestions with pronunciation guides inside a sleek, frameless 60 FPS translucent HUD with dynamic multilingual support.
-
-[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6.svg)](https://www.microsoft.com/windows)
-[![UI: PyQt6](https://img.shields.io/badge/GUI-PyQt6-41CD52.svg)](https://riverbankcomputing.com/software/pyqt/)
+  <p>
+    <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11-blue.svg" alt="Python Version" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
+    <a href="https://www.microsoft.com/windows"><img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6.svg" alt="Platform: Windows" /></a>
+    <a href="https://riverbankcomputing.com/software/pyqt/"><img src="https://img.shields.io/badge/GUI-PyQt6-41CD52.svg" alt="UI: PyQt6" /></a>
+  </p>
+</div>
 
 ---
 
-## 🌟 Key Features
+## Overview
+
+LiveCopilot captures Windows audio output directly from your soundcard (WASAPI Loopback), segments speech in real time with deep-learning voice activity detection (Silero-VAD), transcribes speech under 300 ms with Groq Whisper Cloud (with automatic offline fallback to local faster-whisper), and generates immediate, culturally authentic response suggestions with phonetic pronunciation guides and native translations.
+
+---
+
+## Key Features
 
 1. **WASAPI Loopback Internal Audio Capture (`soundcard`)**:
    - Records directly from the Windows speaker output at 16,000 Hz Mono (`float32`).
    - Non-blocking circular queue buffer in RAM with automatic lag and overflow mitigation.
-   - Dynamic audio device switching from the visual settings dialog.
+   - Dynamic audio device switching from the visual configuration dialog.
 
 2. **Voice Activity Detection (VAD)**:
    - Deep-learning **Silero-VAD** (PyTorch) with adaptive RMS energy fallback.
-   - Pre-roll circular buffer (320 ms) to protect initial consonants from being cut.
-   - Smart pause segmentation (1.8s default, configurable up to 2.5s for lectures) to capture complete paragraphs without cutting mid-sentence.
-   - **Manual Pause Flush**: Pressing `⏸ Pause` instantly flushes and processes whatever was spoken up to that exact moment.
+   - Pre-roll circular buffer (320 ms) to prevent clipping initial consonants.
+   - Smart pause segmentation (1.8s default, configurable up to 2.5s for lectures) to capture complete thoughts without mid-sentence interruptions.
+   - **Manual Pause Flush**: Clicking `PAUSE` instantly flushes and processes whatever was spoken up to that exact moment.
 
 3. **Ultra-Low Latency STT Dual-Engine**:
    - **Primary (Cloud, <300ms)**: Groq API with `whisper-large-v3` running in RAM via `io.BytesIO` (zero disk write latency).
@@ -28,21 +39,21 @@
 
 4. **Multilingual Conversational LLM Copilot**:
    - Powered by Groq (`llama-3.3-70b-versatile` / `qwen3.8-27b`) or Google Gemini (`gemini-2.5-flash`).
-   - **Primary Native Language**: Set your native tongue (e.g. Spanish) so you always understand translations and meanings in your own language.
-   - **Dynamic Target Response Language**: Speak back in **English, Chinese (Mandarin), French, German, Japanese, Portuguese, Italian, Korean, Russian, Arabic**, etc.
-   - **On-the-fly HUD Language Switcher**: Switch the response language with a single click directly from the HUD during a live call without opening settings!
+   - **Primary Native Language**: Configure your native language (e.g. Spanish) to always receive translations and meanings in your own tongue.
+   - **Dynamic Target Response Language**: Speak back in English, Chinese (Mandarin), French, German, Japanese, Portuguese, Italian, Korean, Russian, Arabic, etc.
+   - **On-the-fly HUD Language Switcher**: Change response languages instantly with a single click inside the HUD without opening settings or pausing your meeting.
    - Generates natural replies accompanied by custom phonetic pronunciation guides (such as Pinyin with tones for Chinese or phonetic syllables for English) tailored specifically for your native tongue.
 
 5. **Glassmorphic Floating HUD (PyQt6)**:
-   - Frameless, translucent dark-mode window (`rgba(18, 18, 18, 0.90)`) with `WindowStaysOnTopHint`.
-   - Windows taskbar integration (`WS_EX_APPWINDOW`, `AppUserModelID`) and interactive minimize/restore (`🗕`).
+   - Frameless, translucent dark-mode window (`rgba(14, 16, 20, 0.94)`) with `WindowStaysOnTopHint`.
+   - Windows taskbar integration (`WS_EX_APPWINDOW`, `AppUserModelID`) and interactive minimize/restore.
    - Bottom-right corner resize grip (`QSizeGrip`).
-   - Live VU audio level meter and latency metrics in milliseconds.
+   - Live hardware-style LED status indicator and audio VU level meter.
    - One-click copy button for suggested responses.
 
 ---
 
-## ⚡ Concurrency & Data Flow Architecture
+## Concurrency Architecture
 
 ```mermaid
 sequenceDiagram
@@ -59,20 +70,23 @@ sequenceDiagram
     Note over VAD: Accumulates speech in RAM
     Note over VAD: Detects silence >= 1.8s or manual pause
     VAD->>STT: Full speech audio segment
-    UI->>UI: Status: "Transcribing..." (🟡)
+    UI->>UI: Status: TRANSCRIBING (Amber LED)
     STT->>UI: sig_transcription (Original text)
     STT->>LLM: Active context + heard speech + target language
-    UI->>UI: Status: "Generating suggestion..." (🟡)
+    UI->>UI: Status: GENERATING (Amber LED)
     LLM->>UI: sig_suggestion (Native translation, target response, phonetic guide)
-    UI->>UI: Status: "Listening..." (🟢)
+    UI->>UI: Status: LISTENING (Cyan LED)
 ```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 LiveCopilot/
+├── assets/
+│   ├── logo.png            # High-resolution vector logo
+│   └── icon.png            # Window & taskbar icon
 ├── src/
 │   ├── __init__.py
 │   ├── audio_capture.py    # Background WASAPI Loopback recorder
@@ -86,16 +100,16 @@ LiveCopilot/
 ├── LICENSE                 # Official MIT License
 ├── requirements.txt        # Pinned Python dependencies
 ├── main.py                 # Multi-threaded concurrent orchestrator (QThread)
-└── README.md               # Complete architecture and usage guide
+└── README.md               # Architecture and usage documentation
 ```
 
 ---
 
-## 🚀 Installation & Quick Start
+## Installation & Quick Start
 
 ### Prerequisites
 - **Windows 10 or 11** (64-bit).
-- **Python 3.10 or 3.11** installed. (If you don't have it, install with: `winget install Python.Python.3.11`).
+- **Python 3.10 or 3.11** installed. (If needed: `winget install Python.Python.3.11`).
 
 ---
 
@@ -119,7 +133,7 @@ python -m venv venv
 # 2. Activate virtual environment
 .\venv\Scripts\Activate.ps1
 ```
-> *Note:* If PowerShell gives an `ExecutionPolicy` error, run:  
+> *Note:* If PowerShell reports an `ExecutionPolicy` error, run:  
 > `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` and reactivate.
 
 #### In CMD:
@@ -146,7 +160,7 @@ Copy the example environment file:
 cp .env.example .env
 ```
 
-Edit `.env` or simply configure your preferences through the built-in **Visual Settings Dialog (`⚙️`)** on first run.
+Edit `.env` or configure your preferences through the built-in **Visual Settings Dialog** on first run.
 
 ```env
 # Free Groq API Key (Recommended for ultra-low latency <300ms)
@@ -174,15 +188,15 @@ TARGET_LANGUAGE=auto
 .\venv\Scripts\python.exe main.py
 ```
 
-1. The translucent floating HUD will appear on the bottom-right corner of your screen.
+1. The translucent floating HUD appears in the bottom-right corner of your screen.
 2. Play any video, call, or meeting audio (Zoom, Google Meet, Microsoft Teams, YouTube).
-3. The top VU meter reacts to real-time audio. When speech concludes (or when you click `⏸ Pause`), the original transcription, native translation, target response, and phonetic pronunciation guide appear instantly.
+3. The top VU meter reacts to real-time audio. When speech concludes (or when you click `PAUSE`), the original transcription, native translation, target response, and phonetic pronunciation guide appear instantly.
 4. **Switch Response Language anytime**: Use the dropdown in the HUD to instantly change what language you want to speak back in (e.g. from English to Chinese or French).
 5. Drag from the header bar to move the HUD anywhere on screen, or resize from the bottom-right corner.
 
 ---
 
-## ⚙️ Configuration Reference
+## Configuration Reference
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -199,6 +213,6 @@ TARGET_LANGUAGE=auto
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).

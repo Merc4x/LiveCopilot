@@ -3,6 +3,7 @@ LiveCopilot - Visual Settings Dialog (PyQt6)
 Enables users to configure their Groq API Key with real-time live validation,
 select their audio output device (headphones, speakers), and choose primary native language
 and response language without editing files or running terminal commands.
+Emoji-free, high-end enterprise design.
 """
 
 import logging
@@ -13,7 +14,7 @@ from typing import Dict, List, Optional
 
 from dotenv import load_dotenv
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QCursor, QFont
+from PyQt6.QtGui import QColor, QCursor, QFont, QPixmap
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -33,28 +34,28 @@ from src.audio_capture import AudioCapture
 logger = logging.getLogger("LiveCopilot.Settings")
 
 SUPPORTED_NATIVE_LANGUAGES = [
-    ("🇪🇸 Spanish (Español) - Default", "Spanish"),
-    ("🇺🇸 English", "English"),
-    ("🇧🇷 Portuguese (Português)", "Portuguese"),
-    ("🇫🇷 French (Français)", "French"),
-    ("🇩🇪 German (Deutsch)", "German"),
-    ("🇮🇹 Italian (Italiano)", "Italian"),
-    ("🇯🇵 Japanese (日本語)", "Japanese"),
-    ("🇨🇳 Chinese (中文)", "Chinese"),
+    ("Spanish (Español) - Default", "Spanish"),
+    ("English", "English"),
+    ("Portuguese (Português)", "Portuguese"),
+    ("French (Français)", "French"),
+    ("German (Deutsch)", "German"),
+    ("Italian (Italiano)", "Italian"),
+    ("Japanese (日本語)", "Japanese"),
+    ("Chinese (中文)", "Chinese"),
 ]
 
 SUPPORTED_RESPONSE_LANGUAGES = [
-    ("🇺🇸 English - Default", "English"),
-    ("🇨🇳 Chinese (Mandarin)", "Chinese (Mandarin)"),
-    ("🇪🇸 Spanish", "Spanish"),
-    ("🇫🇷 French", "French"),
-    ("🇩🇪 German", "German"),
-    ("🇮🇹 Italian", "Italian"),
-    ("🇵🇹 Portuguese", "Portuguese"),
-    ("🇯🇵 Japanese", "Japanese"),
-    ("🇰🇷 Korean", "Korean"),
-    ("🇷🇺 Russian", "Russian"),
-    ("🇸🇦 Arabic", "Arabic"),
+    ("English - Default", "English"),
+    ("Chinese (Mandarin)", "Chinese (Mandarin)"),
+    ("Spanish", "Spanish"),
+    ("French", "French"),
+    ("German", "German"),
+    ("Italian", "Italian"),
+    ("Portuguese", "Portuguese"),
+    ("Japanese", "Japanese"),
+    ("Korean", "Korean"),
+    ("Russian", "Russian"),
+    ("Arabic", "Arabic"),
 ]
 
 
@@ -84,7 +85,7 @@ class SettingsDialog(QDialog):
 
     def _init_window(self):
         """Configure modal window properties and behavior."""
-        self.setWindowTitle("LiveCopilot Settings")
+        self.setWindowTitle("LiveCopilot Configuration")
         flags = Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
         if self.is_first_run:
             flags = (
@@ -117,12 +118,12 @@ class SettingsDialog(QDialog):
                 pass
 
     def _init_styles(self):
-        """CSS stylesheets featuring dark glassmorphism and mint green accent."""
+        """CSS stylesheets featuring dark glassmorphism, clean typography, and mint/cyan accents."""
         self.setStyleSheet("""
             QWidget#MainContainer {
-                background-color: rgba(18, 18, 18, 0.95);
-                border: 1px solid rgba(0, 245, 212, 0.35);
-                border-radius: 16px;
+                background-color: rgba(14, 16, 20, 0.96);
+                border: 1px solid rgba(0, 245, 212, 0.30);
+                border-radius: 14px;
             }
             
             QFrame#HeaderBar {
@@ -132,43 +133,45 @@ class SettingsDialog(QDialog):
             
             QLabel#TitleLabel {
                 color: #FFFFFF;
-                font-family: 'Segoe UI', sans-serif;
-                font-size: 15px;
-                font-weight: 700;
+                font-family: 'Segoe UI', 'Inter', sans-serif;
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: 0.8px;
             }
             
             QLabel#SubtitleLabel {
-                color: #9CA3AF;
+                color: #8E95A5;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 11.5px;
+                font-size: 11px;
             }
             
             QLabel.FieldLabel {
-                color: #E5E7EB;
+                color: #B5BCC9;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 11.5px;
-                font-weight: 600;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.8px;
                 margin-top: 4px;
             }
             
             QLineEdit#ApiKeyInput {
-                background-color: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 8px;
+                background-color: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 6px;
                 color: #FFFFFF;
                 font-family: 'Consolas', monospace;
-                font-size: 12px;
+                font-size: 11.5px;
                 padding: 6px 10px;
             }
             QLineEdit#ApiKeyInput:focus {
                 border: 1px solid #00F5D4;
-                background-color: rgba(0, 245, 212, 0.05);
+                background-color: rgba(0, 245, 212, 0.04);
             }
             
             QComboBox {
-                background-color: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 8px;
+                background-color: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 6px;
                 color: #FFFFFF;
                 font-family: 'Segoe UI', sans-serif;
                 font-size: 11.5px;
@@ -178,37 +181,39 @@ class SettingsDialog(QDialog):
                 border: 1px solid #00F5D4;
             }
             QComboBox QAbstractItemView {
-                background-color: #1F2937;
+                background-color: #161920;
                 color: #FFFFFF;
                 selection-background-color: #00F5D4;
-                selection-color: #111827;
+                selection-color: #0A1014;
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 6px;
                 padding: 4px;
             }
             
             QPushButton#BtnToggleEye, QPushButton#BtnVerifyKey {
-                background-color: rgba(255, 255, 255, 0.08);
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 8px;
-                color: #E5E7EB;
-                font-size: 11.5px;
-                font-weight: 600;
+                background-color: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 6px;
+                color: #C5CBD6;
+                font-size: 10.5px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
                 padding: 6px 10px;
             }
             QPushButton#BtnToggleEye:hover, QPushButton#BtnVerifyKey:hover {
-                background-color: rgba(255, 255, 255, 0.16);
+                background-color: rgba(255, 255, 255, 0.14);
                 color: #FFFFFF;
             }
             
             QPushButton#BtnSave {
                 background-color: #00F5D4;
                 border: none;
-                border-radius: 8px;
-                color: #0B1917;
+                border-radius: 6px;
+                color: #0A1014;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 13px;
-                font-weight: 700;
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: 0.6px;
                 padding: 8px 18px;
             }
             QPushButton#BtnSave:hover {
@@ -216,15 +221,17 @@ class SettingsDialog(QDialog):
             }
             
             QPushButton#BtnCancel {
-                background-color: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 8px;
-                color: #9CA3AF;
-                font-size: 12px;
+                background-color: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.10);
+                border-radius: 6px;
+                color: #8E95A5;
+                font-size: 11.5px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
                 padding: 8px 14px;
             }
             QPushButton#BtnCancel:hover {
-                background-color: rgba(255, 255, 255, 0.12);
+                background-color: rgba(255, 255, 255, 0.10);
                 color: #FFFFFF;
             }
             
@@ -267,10 +274,10 @@ class SettingsDialog(QDialog):
 
         header_info = QVBoxLayout()
         header_info.setSpacing(2)
-        title_text = "⚡ Welcome to LiveCopilot" if self.is_first_run else "⚙️ LiveCopilot Settings"
+        title_text = "WELCOME TO LIVECOPILOT" if self.is_first_run else "LIVECOPILOT CONFIGURATION"
         lbl_title = QLabel(title_text, header_frame)
         lbl_title.setObjectName("TitleLabel")
-        lbl_sub = QLabel("Configure your Groq API Key, audio device, and multilingual preferences.", header_frame)
+        lbl_sub = QLabel("Configure API credentials, loopback audio device, and multilingual parameters.", header_frame)
         lbl_sub.setObjectName("SubtitleLabel")
         header_info.addWidget(lbl_title)
         header_info.addWidget(lbl_sub)
@@ -290,7 +297,7 @@ class SettingsDialog(QDialog):
         # -------------------------------------------------------------
         # Field 1: GROQ_API_KEY
         # -------------------------------------------------------------
-        lbl_api_key = QLabel("🔑 Groq API Key (Free):", self.container)
+        lbl_api_key = QLabel("GROQ API KEY", self.container)
         lbl_api_key.setProperty("class", "FieldLabel")
         container_layout.addWidget(lbl_api_key)
 
@@ -301,14 +308,14 @@ class SettingsDialog(QDialog):
         self.input_key.setPlaceholderText("gsk_...")
         key_row.addWidget(self.input_key)
 
-        self.btn_eye = QPushButton("👁️", self.container)
+        self.btn_eye = QPushButton("SHOW", self.container)
         self.btn_eye.setObjectName("BtnToggleEye")
         self.btn_eye.setToolTip("Show / Hide API Key")
         self.btn_eye.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_eye.clicked.connect(self._toggle_password_visibility)
         key_row.addWidget(self.btn_eye)
 
-        self.btn_verify = QPushButton("Verify", self.container)
+        self.btn_verify = QPushButton("VERIFY", self.container)
         self.btn_verify.setObjectName("BtnVerifyKey")
         self.btn_verify.setToolTip("Test connection with Groq")
         self.btn_verify.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -325,7 +332,7 @@ class SettingsDialog(QDialog):
         key_help_row.addStretch()
 
         lbl_link = QLabel(
-            '<a style="color: #38BDF8; text-decoration: none;" href="https://console.groq.com/keys">👉 Get free API key here</a>',
+            '<a style="color: #38BDF8; text-decoration: none;" href="https://console.groq.com/keys">Get a free API key at console.groq.com →</a>',
             self.container,
         )
         lbl_link.setObjectName("HelpLink")
@@ -336,7 +343,7 @@ class SettingsDialog(QDialog):
         # -------------------------------------------------------------
         # Field 2: Audio Output Device (Speakers / Headphones Loopback)
         # -------------------------------------------------------------
-        lbl_device = QLabel("🎧 Audio Output to Capture (Meetings / Calls / Video):", self.container)
+        lbl_device = QLabel("AUDIO OUTPUT DEVICE (WASAPI LOOPBACK)", self.container)
         lbl_device.setProperty("class", "FieldLabel")
         container_layout.addWidget(lbl_device)
 
@@ -347,7 +354,7 @@ class SettingsDialog(QDialog):
         # -------------------------------------------------------------
         # Field 3: User Native / Primary Language (You Understand)
         # -------------------------------------------------------------
-        lbl_native_lang = QLabel("🗣️ Your Native / Primary Language (You Understand):", self.container)
+        lbl_native_lang = QLabel("PRIMARY NATIVE LANGUAGE (YOU UNDERSTAND)", self.container)
         lbl_native_lang.setProperty("class", "FieldLabel")
         container_layout.addWidget(lbl_native_lang)
 
@@ -360,7 +367,7 @@ class SettingsDialog(QDialog):
         # -------------------------------------------------------------
         # Field 4: Default Response Language (You Speak Back In)
         # -------------------------------------------------------------
-        lbl_resp_lang = QLabel("🌐 Default Target Response Language (You Speak):", self.container)
+        lbl_resp_lang = QLabel("DEFAULT TARGET RESPONSE LANGUAGE (YOU SPEAK)", self.container)
         lbl_resp_lang.setProperty("class", "FieldLabel")
         container_layout.addWidget(lbl_resp_lang)
 
@@ -373,7 +380,7 @@ class SettingsDialog(QDialog):
         # -------------------------------------------------------------
         # Field 5: Speech Pause Duration (VAD Silence Timeout)
         # -------------------------------------------------------------
-        lbl_timeout = QLabel("⏱️ Speech Pause Duration (VAD Silence Timeout):", self.container)
+        lbl_timeout = QLabel("SPEECH PAUSE DURATION (VAD TIMEOUT)", self.container)
         lbl_timeout.setProperty("class", "FieldLabel")
         container_layout.addWidget(lbl_timeout)
 
@@ -395,13 +402,13 @@ class SettingsDialog(QDialog):
         btn_layout.addStretch()
 
         if not self.is_first_run:
-            self.btn_cancel = QPushButton("Cancel", self.container)
+            self.btn_cancel = QPushButton("CANCEL", self.container)
             self.btn_cancel.setObjectName("BtnCancel")
             self.btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
             self.btn_cancel.clicked.connect(self.reject)
             btn_layout.addWidget(self.btn_cancel)
 
-        self.btn_save = QPushButton("✓ Save & Launch" if self.is_first_run else "✓ Save Changes", self.container)
+        self.btn_save = QPushButton("SAVE & LAUNCH" if self.is_first_run else "SAVE CHANGES", self.container)
         self.btn_save.setObjectName("BtnSave")
         self.btn_save.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_save.clicked.connect(self._save_settings)
@@ -465,20 +472,20 @@ class SettingsDialog(QDialog):
         """Toggle API key visibility mode."""
         if self.input_key.echoMode() == QLineEdit.EchoMode.Password:
             self.input_key.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.btn_eye.setText("🔒")
+            self.btn_eye.setText("HIDE")
         else:
             self.input_key.setEchoMode(QLineEdit.EchoMode.Password)
-            self.btn_eye.setText("👁️")
+            self.btn_eye.setText("SHOW")
 
     def _verify_api_key(self):
         """Validate the Groq API key in real-time."""
         key = self.input_key.text().strip()
         if not key or not key.startswith("gsk_"):
-            self.lbl_key_status.setText("❌ Key must start with 'gsk_'")
+            self.lbl_key_status.setText("Key must start with 'gsk_'")
             self.lbl_key_status.setStyleSheet("color: #EF4444;")
             return
 
-        self.lbl_key_status.setText("⏳ Verifying with Groq...")
+        self.lbl_key_status.setText("Connecting to Groq...")
         self.lbl_key_status.setStyleSheet("color: #FBBF24;")
         self.btn_verify.setEnabled(False)
 
@@ -490,18 +497,18 @@ class SettingsDialog(QDialog):
                 messages=[{"role": "user", "content": "ping"}],
                 max_tokens=5,
             )
-            self.lbl_key_status.setText("✓ Key verified and ready to use")
+            self.lbl_key_status.setText("Active & Verified")
             self.lbl_key_status.setStyleSheet("color: #10B981;")
         except Exception as e:
             err_str = str(e)
             if "invalid_api_key" in err_str or "401" in err_str:
-                self.lbl_key_status.setText("❌ Key rejected (invalid API key)")
+                self.lbl_key_status.setText("Key rejected (invalid API key)")
             elif "rate_limit" in err_str or "429" in err_str:
-                self.lbl_key_status.setText("✓ Key connected successfully")
+                self.lbl_key_status.setText("Key connected successfully")
                 self.lbl_key_status.setStyleSheet("color: #10B981;")
             else:
-                self.lbl_key_status.setText(f"❌ Connection error: {err_str[:40]}")
-            self.lbl_key_status.setStyleSheet("color: #EF4444;" if "❌" in self.lbl_key_status.text() else "color: #10B981;")
+                self.lbl_key_status.setText(f"Connection error: {err_str[:40]}")
+            self.lbl_key_status.setStyleSheet("color: #EF4444;" if "error" in self.lbl_key_status.text().lower() or "rejected" in self.lbl_key_status.text().lower() else "color: #10B981;")
         finally:
             self.btn_verify.setEnabled(True)
 
