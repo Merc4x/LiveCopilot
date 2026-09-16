@@ -96,6 +96,8 @@ class SettingsDialog(QDialog):
             )
         self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        from src.ui_overlay import get_app_icon
+        self.setWindowIcon(get_app_icon())
         self.setFixedSize(520, 620)
 
         # Drag tracking
@@ -104,16 +106,38 @@ class SettingsDialog(QDialog):
 
     def showEvent(self, event):
         super().showEvent(event)
-        if self.is_first_run and sys.platform == "win32":
+        if sys.platform == "win32":
             try:
                 import ctypes
                 hwnd = int(self.winId())
-                GWL_EXSTYLE = -20
-                WS_EX_APPWINDOW = 0x00040000
-                user32 = ctypes.windll.user32
-                ex_style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-                user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_APPWINDOW)
-                user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0020 | 0x0002 | 0x0001 | 0x0004 | 0x0010)
+                if self.is_first_run:
+                    GWL_EXSTYLE = -20
+                    WS_EX_APPWINDOW = 0x00040000
+                    user32 = ctypes.windll.user32
+                    ex_style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                    user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_APPWINDOW)
+                    user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0020 | 0x0002 | 0x0001 | 0x0004 | 0x0010)
+
+                ico_path = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "app.ico"
+                )
+                if os.path.exists(ico_path):
+                    user32 = ctypes.windll.user32
+                    user32.LoadImageW.argtypes = [
+                        ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_uint,
+                        ctypes.c_int, ctypes.c_int, ctypes.c_uint
+                    ]
+                    user32.LoadImageW.restype = ctypes.c_void_p
+                    user32.SendMessageW.argtypes = [
+                        ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p
+                    ]
+                    user32.SendMessageW.restype = ctypes.c_void_p
+                    hicon_big = user32.LoadImageW(None, ico_path, 1, 32, 32, 0x0010)
+                    hicon_small = user32.LoadImageW(None, ico_path, 1, 16, 16, 0x0010)
+                    if hicon_big:
+                        user32.SendMessageW(hwnd, 0x0080, 1, hicon_big)
+                    if hicon_small:
+                        user32.SendMessageW(hwnd, 0x0080, 0, hicon_small)
             except Exception:
                 pass
 

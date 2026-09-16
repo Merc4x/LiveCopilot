@@ -48,10 +48,15 @@ AVAILABLE_RESPONSE_LANGUAGES = [
 
 
 def get_app_icon() -> QIcon:
-    """Load application icon from assets, or generate a crisp vector fallback."""
-    icon_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png"
+    """Load application icon from assets, prioritizing multi-resolution Windows .ico."""
+    assets_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets"
     )
+    ico_path = os.path.join(assets_dir, "app.ico")
+    if os.path.exists(ico_path):
+        return QIcon(ico_path)
+
+    icon_path = os.path.join(assets_dir, "icon.png")
     if os.path.exists(icon_path):
         return QIcon(icon_path)
 
@@ -126,7 +131,7 @@ class FloatingHUD(QWidget):
             self.move(max(20, x), max(20, y))
 
     def _force_windows_taskbar(self):
-        """Ensure Windows explicitly registers the frameless window in the taskbar."""
+        """Ensure Windows explicitly registers the frameless window in the taskbar with the custom icon."""
         if sys.platform == "win32":
             try:
                 import ctypes
@@ -136,11 +141,41 @@ class FloatingHUD(QWidget):
                 WS_EX_TOOLWINDOW = 0x00000080
                 user32 = ctypes.windll.user32
                 ex_style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-                user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_APPWINDOW)
+                ex_style = (ex_style & ~WS_EX_TOOLWINDOW) | WS_EX_APPWINDOW
+                user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style)
                 user32.SetWindowPos(
                     hwnd, 0, 0, 0, 0, 0,
                     0x0020 | 0x0002 | 0x0001 | 0x0004 | 0x0010
                 )
+
+                # Send WM_SETICON directly to HWND so Windows taskbar & Alt+Tab display the custom icon
+                ico_path = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "app.ico"
+                )
+                if os.path.exists(ico_path):
+                    user32.LoadImageW.argtypes = [
+                        ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_uint,
+                        ctypes.c_int, ctypes.c_int, ctypes.c_uint
+                    ]
+                    user32.LoadImageW.restype = ctypes.c_void_p
+                    user32.SendMessageW.argtypes = [
+                        ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p
+                    ]
+                    user32.SendMessageW.restype = ctypes.c_void_p
+
+                    # IMAGE_ICON = 1, LR_LOADFROMFILE = 0x0010
+                    hicon_big = user32.LoadImageW(None, ico_path, 1, 32, 32, 0x0010)
+                    hicon_small = user32.LoadImageW(None, ico_path, 1, 16, 16, 0x0010)
+
+                    # WM_SETICON = 0x0080 (1 = ICON_BIG for taskbar/Alt-Tab, 0 = ICON_SMALL)
+                    if hicon_big:
+                        user32.SendMessageW(hwnd, 0x0080, 1, hicon_big)
+                        if hasattr(user32, "SetClassLongPtrW"):
+                            user32.SetClassLongPtrW(hwnd, -14, hicon_big)
+                    if hicon_small:
+                        user32.SendMessageW(hwnd, 0x0080, 0, hicon_small)
+                        if hasattr(user32, "SetClassLongPtrW"):
+                            user32.SetClassLongPtrW(hwnd, -34, hicon_small)
             except Exception as e:
                 logger.debug("Error enforcing Windows taskbar presence: %s", e)
 
