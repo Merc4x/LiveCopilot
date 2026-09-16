@@ -2,7 +2,7 @@
 LiveCopilot - Minimalist Floating Heads-Up Display (PyQt6)
 Frameless, semi-transparent, pinned on top, draggable HUD
 with guaranteed 60 FPS performance, dynamic multilingual response switching,
-and clean professional typography without emojis.
+and prominent, transparent logo branding.
 """
 
 import logging
@@ -161,15 +161,15 @@ class FloatingHUD(QWidget):
             QFrame#HeaderBar {
                 background: transparent;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-                padding: 0px 2px 6px 2px;
+                padding: 2px 2px 8px 2px;
             }
             
             QLabel#AppTitle {
                 color: #FFFFFF;
                 font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
-                font-size: 11.5px;
+                font-size: 12px;
                 font-weight: 800;
-                letter-spacing: 1.2px;
+                letter-spacing: 1.5px;
             }
             
             /* Hardware/State LED Indicator */
@@ -180,15 +180,14 @@ class FloatingHUD(QWidget):
                 max-height: 7px;
                 border-radius: 3px;
                 background-color: #00F5D4;
-                margin-right: 4px;
             }
             
             QLabel#StatusText {
                 color: #8E95A5;
                 font-family: 'Segoe UI', 'Inter', sans-serif;
-                font-size: 11px;
-                font-weight: 600;
-                letter-spacing: 0.3px;
+                font-size: 10.5px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
             }
             
             /* Header Action Buttons */
@@ -387,33 +386,39 @@ class FloatingHUD(QWidget):
         header_layout.setContentsMargins(0, 0, 0, 4)
         header_layout.setSpacing(8)
 
-        # Minimalist LED indicator dot
-        self.status_dot = QLabel(self.header_frame)
-        self.status_dot.setObjectName("StatusIndicator")
-
-        # Sleek brand title with mini logo icon
+        # Brand Layout: Prominent Logo + Crisp Title
         brand_layout = QHBoxLayout()
-        brand_layout.setSpacing(6)
+        brand_layout.setSpacing(8)
 
         logo_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png"
         )
         if os.path.exists(logo_path):
             self.lbl_logo = QLabel(self.header_frame)
-            pix = QPixmap(logo_path).scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            pix = QPixmap(logo_path).scaled(
+                32, 26, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+            )
             self.lbl_logo.setPixmap(pix)
+            self.lbl_logo.setFixedSize(32, 26)
             brand_layout.addWidget(self.lbl_logo)
 
         self.title_label = QLabel("LIVECOPILOT", self.header_frame)
         self.title_label.setObjectName("AppTitle")
         brand_layout.addWidget(self.title_label)
 
+        # Status Layout: Hardware LED + Text
+        status_layout = QHBoxLayout()
+        status_layout.setSpacing(5)
+        self.status_dot = QLabel(self.header_frame)
+        self.status_dot.setObjectName("StatusIndicator")
         self.status_label = QLabel("LISTENING", self.header_frame)
         self.status_label.setObjectName("StatusText")
+        status_layout.addWidget(self.status_dot)
+        status_layout.addWidget(self.status_label)
 
-        header_layout.addWidget(self.status_dot)
         header_layout.addLayout(brand_layout)
-        header_layout.addWidget(self.status_label)
+        header_layout.addSpacing(6)
+        header_layout.addLayout(status_layout)
         header_layout.addStretch()
 
         # Pause / Resume Button

@@ -270,7 +270,21 @@ class SettingsDialog(QDialog):
         header_frame = QFrame(self.container)
         header_frame.setObjectName("HeaderBar")
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(0, 0, 0, 4)
+        header_layout.setContentsMargins(0, 0, 0, 6)
+        header_layout.setSpacing(10)
+
+        # Brand logo
+        logo_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.png"
+        )
+        if os.path.exists(logo_path):
+            lbl_logo = QLabel(header_frame)
+            pix = QPixmap(logo_path).scaled(
+                38, 30, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+            )
+            lbl_logo.setPixmap(pix)
+            lbl_logo.setFixedSize(38, 30)
+            header_layout.addWidget(lbl_logo)
 
         header_info = QVBoxLayout()
         header_info.setSpacing(2)
