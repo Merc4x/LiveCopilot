@@ -117,7 +117,7 @@ LiveCopilot/
 
 In **PowerShell** or **Command Prompt (CMD)**:
 ```powershell
-git clone https://github.com/Thekrownn/LiveCopilot.git
+git clone https://github.com/Merc4x/LiveCopilot.git
 cd LiveCopilot
 ```
 
