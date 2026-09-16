@@ -1,8 +1,8 @@
 """
 LiveCopilot - Visual Settings Dialog (PyQt6)
 Enables users to configure their Groq API Key with real-time live validation,
-select their audio output device (headphones, speakers), and choose language settings
-without editing files or running terminal commands.
+select their audio output device (headphones, speakers), and choose primary native language
+and response language without editing files or running terminal commands.
 """
 
 import logging
@@ -31,6 +31,31 @@ from PyQt6.QtWidgets import (
 from src.audio_capture import AudioCapture
 
 logger = logging.getLogger("LiveCopilot.Settings")
+
+SUPPORTED_NATIVE_LANGUAGES = [
+    ("🇪🇸 Spanish (Español) - Default", "Spanish"),
+    ("🇺🇸 English", "English"),
+    ("🇧🇷 Portuguese (Português)", "Portuguese"),
+    ("🇫🇷 French (Français)", "French"),
+    ("🇩🇪 German (Deutsch)", "German"),
+    ("🇮🇹 Italian (Italiano)", "Italian"),
+    ("🇯🇵 Japanese (日本語)", "Japanese"),
+    ("🇨🇳 Chinese (中文)", "Chinese"),
+]
+
+SUPPORTED_RESPONSE_LANGUAGES = [
+    ("🇺🇸 English - Default", "English"),
+    ("🇨🇳 Chinese (Mandarin)", "Chinese (Mandarin)"),
+    ("🇪🇸 Spanish", "Spanish"),
+    ("🇫🇷 French", "French"),
+    ("🇩🇪 German", "German"),
+    ("🇮🇹 Italian", "Italian"),
+    ("🇵🇹 Portuguese", "Portuguese"),
+    ("🇯🇵 Japanese", "Japanese"),
+    ("🇰🇷 Korean", "Korean"),
+    ("🇷🇺 Russian", "Russian"),
+    ("🇸🇦 Arabic", "Arabic"),
+]
 
 
 def get_env_path() -> str:
@@ -70,7 +95,7 @@ class SettingsDialog(QDialog):
             )
         self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setFixedSize(500, 540)
+        self.setFixedSize(520, 620)
 
         # Drag tracking
         self._is_dragging = False
@@ -121,9 +146,9 @@ class SettingsDialog(QDialog):
             QLabel.FieldLabel {
                 color: #E5E7EB;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 12px;
+                font-size: 11.5px;
                 font-weight: 600;
-                margin-top: 6px;
+                margin-top: 4px;
             }
             
             QLineEdit#ApiKeyInput {
@@ -140,16 +165,16 @@ class SettingsDialog(QDialog):
                 background-color: rgba(0, 245, 212, 0.05);
             }
             
-            QComboBox#DeviceCombo, QComboBox#LangCombo, QComboBox#TimeoutCombo {
+            QComboBox {
                 background-color: rgba(255, 255, 255, 0.06);
                 border: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: 8px;
                 color: #FFFFFF;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 12px;
-                padding: 6px 10px;
+                font-size: 11.5px;
+                padding: 5px 9px;
             }
-            QComboBox#DeviceCombo:focus, QComboBox#LangCombo:focus, QComboBox#TimeoutCombo:focus {
+            QComboBox:focus {
                 border: 1px solid #00F5D4;
             }
             QComboBox QAbstractItemView {
@@ -229,8 +254,8 @@ class SettingsDialog(QDialog):
         self.container.setGraphicsEffect(shadow)
 
         container_layout = QVBoxLayout(self.container)
-        container_layout.setContentsMargins(18, 16, 18, 16)
-        container_layout.setSpacing(10)
+        container_layout.setContentsMargins(18, 14, 18, 14)
+        container_layout.setSpacing(8)
 
         # -------------------------------------------------------------
         # Header
@@ -245,7 +270,7 @@ class SettingsDialog(QDialog):
         title_text = "⚡ Welcome to LiveCopilot" if self.is_first_run else "⚙️ LiveCopilot Settings"
         lbl_title = QLabel(title_text, header_frame)
         lbl_title.setObjectName("TitleLabel")
-        lbl_sub = QLabel("Configure your Groq API Key and audio output device.", header_frame)
+        lbl_sub = QLabel("Configure your Groq API Key, audio device, and multilingual preferences.", header_frame)
         lbl_sub.setObjectName("SubtitleLabel")
         header_info.addWidget(lbl_title)
         header_info.addWidget(lbl_sub)
@@ -319,28 +344,34 @@ class SettingsDialog(QDialog):
         self.combo_device.setObjectName("DeviceCombo")
         container_layout.addWidget(self.combo_device)
 
-        lbl_device_hint = QLabel(
-            "Select the headphones or speakers where you hear other participants.", self.container
-        )
-        lbl_device_hint.setStyleSheet("color: #6B7280; font-size: 11px;")
-        container_layout.addWidget(lbl_device_hint)
+        # -------------------------------------------------------------
+        # Field 3: User Native / Primary Language (You Understand)
+        # -------------------------------------------------------------
+        lbl_native_lang = QLabel("🗣️ Your Native / Primary Language (You Understand):", self.container)
+        lbl_native_lang.setProperty("class", "FieldLabel")
+        container_layout.addWidget(lbl_native_lang)
+
+        self.combo_native_lang = QComboBox(self.container)
+        self.combo_native_lang.setObjectName("NativeLangCombo")
+        for label, val in SUPPORTED_NATIVE_LANGUAGES:
+            self.combo_native_lang.addItem(label, val)
+        container_layout.addWidget(self.combo_native_lang)
 
         # -------------------------------------------------------------
-        # Field 3: Language Mode
+        # Field 4: Default Response Language (You Speak Back In)
         # -------------------------------------------------------------
-        lbl_lang = QLabel("🌐 Speech Detection / Target Language:", self.container)
-        lbl_lang.setProperty("class", "FieldLabel")
-        container_layout.addWidget(lbl_lang)
+        lbl_resp_lang = QLabel("🌐 Default Target Response Language (You Speak):", self.container)
+        lbl_resp_lang.setProperty("class", "FieldLabel")
+        container_layout.addWidget(lbl_resp_lang)
 
-        self.combo_lang = QComboBox(self.container)
-        self.combo_lang.setObjectName("LangCombo")
-        self.combo_lang.addItem("Auto-detect (Recommended for calls & classes)", "auto")
-        self.combo_lang.addItem("Force English (English speech input)", "en")
-        self.combo_lang.addItem("Force Spanish (Spanish speech input)", "es")
-        container_layout.addWidget(self.combo_lang)
+        self.combo_resp_lang = QComboBox(self.container)
+        self.combo_resp_lang.setObjectName("RespLangCombo")
+        for label, val in SUPPORTED_RESPONSE_LANGUAGES:
+            self.combo_resp_lang.addItem(label, val)
+        container_layout.addWidget(self.combo_resp_lang)
 
         # -------------------------------------------------------------
-        # Field 4: Speech Duration / Pause Timeout (VAD)
+        # Field 5: Speech Pause Duration (VAD Silence Timeout)
         # -------------------------------------------------------------
         lbl_timeout = QLabel("⏱️ Speech Pause Duration (VAD Silence Timeout):", self.container)
         lbl_timeout.setProperty("class", "FieldLabel")
@@ -354,19 +385,13 @@ class SettingsDialog(QDialog):
         self.combo_timeout.addItem("Short fast phrases (0.8s pause)", "800")
         container_layout.addWidget(self.combo_timeout)
 
-        lbl_timeout_hint = QLabel(
-            "A longer pause duration captures complete sentences and thoughts before translating.", self.container
-        )
-        lbl_timeout_hint.setStyleSheet("color: #6B7280; font-size: 11px;")
-        container_layout.addWidget(lbl_timeout_hint)
-
         container_layout.addStretch()
 
         # -------------------------------------------------------------
         # Action Buttons
         # -------------------------------------------------------------
         btn_layout = QHBoxLayout()
-        btn_layout.setContentsMargins(0, 10, 0, 0)
+        btn_layout.setContentsMargins(0, 8, 0, 0)
         btn_layout.addStretch()
 
         if not self.is_first_run:
@@ -396,7 +421,8 @@ class SettingsDialog(QDialog):
             self.input_key.setText(current_key)
 
         current_device_id = os.getenv("AUDIO_DEVICE_ID", "").strip()
-        current_lang = os.getenv("TARGET_LANGUAGE", "auto").strip().lower()
+        current_native_lang = os.getenv("USER_NATIVE_LANG", "Spanish").strip()
+        current_resp_lang = os.getenv("RESPONSE_LANG", "English").strip()
 
         # Populate audio output devices
         devices = AudioCapture.get_available_devices()
@@ -415,10 +441,17 @@ class SettingsDialog(QDialog):
         else:
             self.combo_device.addItem("Default System Audio (WASAPI Loopback)", "")
 
-        # Select language option
-        for idx in range(self.combo_lang.count()):
-            if self.combo_lang.itemData(idx) == current_lang:
-                self.combo_lang.setCurrentIndex(idx)
+        # Select native language
+        for idx in range(self.combo_native_lang.count()):
+            if self.combo_native_lang.itemData(idx).lower() == current_native_lang.lower():
+                self.combo_native_lang.setCurrentIndex(idx)
+                break
+
+        # Select response language
+        for idx in range(self.combo_resp_lang.count()):
+            data = self.combo_resp_lang.itemData(idx)
+            if data and (data.lower() == current_resp_lang.lower() or current_resp_lang.lower() in data.lower()):
+                self.combo_resp_lang.setCurrentIndex(idx)
                 break
 
         # Select VAD timeout option
@@ -484,7 +517,8 @@ class SettingsDialog(QDialog):
             return
 
         device_id = self.combo_device.currentData()
-        target_lang = self.combo_lang.currentData()
+        native_lang = self.combo_native_lang.currentData() or "Spanish"
+        resp_lang = self.combo_resp_lang.currentData() or "English"
         timeout_ms = self.combo_timeout.currentData() or "1800"
 
         # Update or create .env file
@@ -501,7 +535,9 @@ class SettingsDialog(QDialog):
         # Update values
         env_content["GROQ_API_KEY"] = key
         env_content["AUDIO_DEVICE_ID"] = device_id or ""
-        env_content["TARGET_LANGUAGE"] = target_lang or "auto"
+        env_content["USER_NATIVE_LANG"] = native_lang
+        env_content["RESPONSE_LANG"] = resp_lang
+        env_content["TARGET_LANGUAGE"] = "auto"
         env_content["VAD_SILENCE_TIMEOUT_MS"] = str(timeout_ms)
         env_content["STT_MODE"] = "cloud"
         env_content["LLM_PROVIDER"] = "groq"
@@ -519,13 +555,17 @@ class SettingsDialog(QDialog):
         # Update active process environment
         os.environ["GROQ_API_KEY"] = key
         os.environ["AUDIO_DEVICE_ID"] = device_id or ""
-        os.environ["TARGET_LANGUAGE"] = target_lang or "auto"
+        os.environ["USER_NATIVE_LANG"] = native_lang
+        os.environ["RESPONSE_LANG"] = resp_lang
+        os.environ["TARGET_LANGUAGE"] = "auto"
         os.environ["VAD_SILENCE_TIMEOUT_MS"] = str(timeout_ms)
 
         payload = {
             "groq_api_key": key,
             "device_id": device_id,
-            "target_language": target_lang,
+            "user_native_lang": native_lang,
+            "response_lang": resp_lang,
+            "target_language": "auto",
             "vad_silence_timeout_ms": timeout_ms,
         }
         self.settings_saved.emit(payload)

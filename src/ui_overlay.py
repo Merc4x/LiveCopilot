@@ -1,7 +1,8 @@
 """
 LiveCopilot - Minimalist Floating Heads-Up Display (PyQt6)
 Frameless, semi-transparent, pinned on top, draggable HUD
-with guaranteed 60 FPS performance and Windows taskbar integration.
+with guaranteed 60 FPS performance, dynamic multilingual response switching,
+and Windows taskbar integration.
 """
 
 import logging
@@ -12,6 +13,7 @@ from PyQt6.QtCore import QPoint, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap, QLinearGradient
 from PyQt6.QtWidgets import (
     QApplication,
+    QComboBox,
     QFrame,
     QGraphicsDropShadowEffect,
     QHBoxLayout,
@@ -26,6 +28,22 @@ from PyQt6.QtWidgets import (
 )
 
 logger = logging.getLogger("LiveCopilot.UI")
+
+# Available response languages for live on-the-fly switching
+AVAILABLE_RESPONSE_LANGUAGES = [
+    ("🇺🇸 English", "English"),
+    ("🇨🇳 Chinese", "Chinese (Mandarin)"),
+    ("🇪🇸 Spanish", "Spanish"),
+    ("🇫🇷 French", "French"),
+    ("🇩🇪 German", "German"),
+    ("🇮🇹 Italian", "Italian"),
+    ("🇵🇹 Portuguese", "Portuguese"),
+    ("🇯🇵 Japanese", "Japanese"),
+    ("🇰🇷 Korean", "Korean"),
+    ("🇷🇺 Russian", "Russian"),
+    ("🇸🇦 Arabic", "Arabic"),
+    ("🇮🇳 Hindi", "Hindi"),
+]
 
 
 def get_app_icon() -> QIcon:
@@ -53,13 +71,14 @@ def get_app_icon() -> QIcon:
 class FloatingHUD(QWidget):
     """
     Semi-transparent floating HUD for projecting real-time speech transcription
-    and AI conversational suggestions.
+    and AI conversational suggestions with instant multilingual target switching.
     """
 
     # Signals for decoupled communication
     request_toggle_pause = pyqtSignal()
     request_clear = pyqtSignal()
     request_open_settings = pyqtSignal()
+    request_change_response_language = pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
@@ -110,8 +129,7 @@ class FloatingHUD(QWidget):
                 WS_EX_TOOLWINDOW = 0x00000080
                 user32 = ctypes.windll.user32
                 ex_style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-                ex_style = (ex_style & ~WS_EX_TOOLWINDOW) | WS_EX_APPWINDOW
-                user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style)
+                user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_APPWINDOW)
                 user32.SetWindowPos(
                     hwnd, 0, 0, 0, 0, 0,
                     0x0020 | 0x0002 | 0x0001 | 0x0004 | 0x0010
@@ -232,6 +250,32 @@ class FloatingHUD(QWidget):
                 letter-spacing: 0.8px;
             }
             
+            /* Language Switcher Selector in Suggestion Header */
+            QComboBox#ComboRespLang {
+                background-color: rgba(0, 245, 212, 0.12);
+                border: 1px solid rgba(0, 245, 212, 0.35);
+                border-radius: 5px;
+                color: #00F5D4;
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 2px 6px;
+                min-width: 110px;
+            }
+            QComboBox#ComboRespLang:hover {
+                background-color: rgba(0, 245, 212, 0.22);
+                border: 1px solid rgba(0, 245, 212, 0.60);
+            }
+            QComboBox#ComboRespLang QAbstractItemView {
+                background-color: #181A20;
+                color: #FFFFFF;
+                selection-background-color: #00F5D4;
+                selection-color: #0B1917;
+                border: 1px solid rgba(0, 245, 212, 0.35);
+                border-radius: 6px;
+                padding: 4px;
+            }
+            
             QLabel#TextSugContent {
                 color: #00F5D4;
                 font-family: 'Segoe UI', sans-serif;
@@ -295,7 +339,7 @@ class FloatingHUD(QWidget):
         """)
 
     def _build_ui(self):
-        """Construct the visual component hierarchy for the HUD."""
+        """Construct visual component hierarchy for the HUD."""
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -423,7 +467,7 @@ class FloatingHUD(QWidget):
         container_layout.addWidget(self.card_heard)
 
         # -------------------------------------------------------------
-        # 3. Block 2: AI Suggestion (English + Phonetics + Meaning)
+        # 3. Block 2: AI Suggestion (Response + Phonetics + Meaning)
         # -------------------------------------------------------------
         self.card_sug = QFrame(self.container)
         self.card_sug.setObjectName("CardSuggestion")
@@ -432,20 +476,31 @@ class FloatingHUD(QWidget):
         layout_sug.setSpacing(5)
 
         sug_tag_layout = QHBoxLayout()
-        self.label_sug_tag = QLabel("💡 HOW TO RESPOND (ENGLISH & PRONUNCIATION)", self.card_sug)
+        sug_tag_layout.setSpacing(6)
+
+        self.label_sug_tag = QLabel("💡 HOW TO RESPOND:", self.card_sug)
         self.label_sug_tag.setObjectName("LabelSugTag")
+
+        # Instant target response language selector
+        self.combo_resp_lang = QComboBox(self.card_sug)
+        self.combo_resp_lang.setObjectName("ComboRespLang")
+        self.combo_resp_lang.setToolTip("Change the language you want to speak back in")
+        for label, lang_value in AVAILABLE_RESPONSE_LANGUAGES:
+            self.combo_resp_lang.addItem(label, lang_value)
+        self.combo_resp_lang.currentIndexChanged.connect(self._on_response_language_changed)
 
         self.btn_copy = QPushButton("Copy", self.card_sug)
         self.btn_copy.setObjectName("CopyBtn")
-        self.btn_copy.setToolTip("Copy English phrase to clipboard")
+        self.btn_copy.setToolTip("Copy response to clipboard")
         self.btn_copy.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_copy.clicked.connect(self._copy_suggestion_to_clipboard)
 
         sug_tag_layout.addWidget(self.label_sug_tag)
+        sug_tag_layout.addWidget(self.combo_resp_lang)
         sug_tag_layout.addStretch()
         sug_tag_layout.addWidget(self.btn_copy)
 
-        # 1. Suggested phrase in English to speak
+        # 1. Suggested phrase to speak
         self.text_sug = QLabel("Smart response suggestions will appear here...", self.card_sug)
         self.text_sug.setObjectName("TextSugContent")
         self.text_sug.setWordWrap(True)
@@ -490,7 +545,27 @@ class FloatingHUD(QWidget):
         root_layout.addWidget(self.container)
 
     # -----------------------------------------------------------------
-    # Window Drag Management (Drag from header or window frame)
+    # Language Selection Slot
+    # -----------------------------------------------------------------
+    def _on_response_language_changed(self, index: int):
+        """Triggered when the user changes the response language dropdown."""
+        lang_value = self.combo_resp_lang.itemData(index)
+        if lang_value:
+            logger.info("User switched response language to: %s", lang_value)
+            self.request_change_response_language.emit(lang_value)
+
+    def set_active_response_language(self, lang_value: str):
+        """Set the active response language in the dropdown programmatically."""
+        for idx in range(self.combo_resp_lang.count()):
+            data = self.combo_resp_lang.itemData(idx)
+            if data and data.lower() == lang_value.lower():
+                self.combo_resp_lang.blockSignals(True)
+                self.combo_resp_lang.setCurrentIndex(idx)
+                self.combo_resp_lang.blockSignals(False)
+                break
+
+    # -----------------------------------------------------------------
+    # Window Drag Management
     # -----------------------------------------------------------------
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -537,7 +612,7 @@ class FloatingHUD(QWidget):
             else:
                 self.text_heard_trans.setVisible(False)
 
-            # 2. Suggested phrase in English
+            # 2. Suggested phrase to speak
             response = (data.get("response") or data.get("respuesta", "")).strip()
             if response:
                 self.text_sug.setText(response)
@@ -559,7 +634,6 @@ class FloatingHUD(QWidget):
                 self.text_sug_es.setVisible(False)
 
         else:
-            # Fallback if raw text string is received
             self.text_sug.setText(str(data))
             self.text_sug_pron.setVisible(False)
             self.text_sug_es.setVisible(False)
@@ -641,7 +715,7 @@ class FloatingHUD(QWidget):
         self.request_clear.emit()
 
     def _copy_suggestion_to_clipboard(self):
-        """Copy active English suggestion to Windows clipboard."""
+        """Copy active response suggestion to Windows clipboard."""
         text = self.text_sug.text().strip()
         if text and text != "Smart response suggestions will appear here...":
             clipboard = QApplication.clipboard()

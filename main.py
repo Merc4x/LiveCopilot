@@ -2,7 +2,7 @@
 LiveCopilot - Main Application Entry Point & Concurrency Orchestrator
 Coordinates WASAPI Loopback capture, VAD voice activity detection, STT transcription (Groq/Whisper),
 and LLM response generation across decoupled worker threads (QThread) to ensure
-a silky-smooth 60 FPS floating HUD interface in PyQt6.
+a silky-smooth 60 FPS floating HUD interface in PyQt6 with dynamic multilingual support.
 """
 
 import logging
@@ -64,7 +64,11 @@ class LivePipelineWorker(QThread):
         self.groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
         self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
         self.llm_provider = os.getenv("LLM_PROVIDER", "groq").strip().lower()
-        self.target_lang = os.getenv("TARGET_LANGUAGE", "es").strip()
+        self.target_lang = os.getenv("TARGET_LANGUAGE", "auto").strip()
+
+        # Multilingual configuration
+        self.user_native_lang = os.getenv("USER_NATIVE_LANG", "Spanish").strip()
+        self.response_lang = os.getenv("RESPONSE_LANG", "English").strip()
 
         vad_timeout = int(os.getenv("VAD_SILENCE_TIMEOUT_MS", "1800"))
         vad_threshold = float(os.getenv("VAD_THRESHOLD", "0.4"))
@@ -103,11 +107,13 @@ class LivePipelineWorker(QThread):
             target_language=self.target_lang,
         )
 
-        # 4. Conversational Assistant Engine (Groq / Gemini)
+        # 4. Multilingual Conversational Assistant Engine (Groq / Gemini)
         self.assistant = LiveAssistant(
             provider=self.llm_provider,
             groq_api_key=self.groq_api_key,
             gemini_api_key=self.gemini_api_key,
+            native_language=self.user_native_lang,
+            response_language=self.response_lang,
         )
 
     def _handle_audio_level(self, level: float):
@@ -186,7 +192,7 @@ class LivePipelineWorker(QThread):
             logger.info("Transcribed [%s | %.1f ms]: %s", engine, stt_latency, text)
             self.sig_transcription.emit(text, stt_latency, engine)
 
-            # 2. Conversational LLM Suggestion
+            # 2. Conversational LLM Suggestion in target language
             self.sig_status.emit("Generating suggestion...", "processing")
             sug_data, llm_latency, provider = self.assistant.get_suggestion(text)
 
@@ -216,6 +222,13 @@ class LivePipelineWorker(QThread):
             self.sig_status.emit("Listening...", "active")
             logger.info("Audio pipeline resumed by user.")
 
+    def update_response_language(self, response_lang: str):
+        """Update the target conversational response language dynamically."""
+        self.response_lang = response_lang
+        self.assistant.set_response_language(response_lang)
+        os.environ["RESPONSE_LANG"] = response_lang
+        logger.info("Target response language dynamically updated to: %s", response_lang)
+
     def update_config(self, config: dict):
         """Apply dynamic configuration changes without restarting the app."""
         if "groq_api_key" in config and config["groq_api_key"]:
@@ -227,6 +240,13 @@ class LivePipelineWorker(QThread):
 
         if "device_id" in config:
             self.audio_capture.set_device(config["device_id"])
+
+        if "user_native_lang" in config and "response_lang" in config:
+            self.user_native_lang = config["user_native_lang"]
+            self.response_lang = config["response_lang"]
+            self.assistant.set_languages(self.user_native_lang, self.response_lang)
+        elif "response_lang" in config:
+            self.update_response_language(config["response_lang"])
 
         if "target_language" in config:
             self.target_lang = config["target_language"]
@@ -260,12 +280,10 @@ def get_env_path() -> str:
 
 def main():
     """Main application entry point."""
-    # Load environment variables from .env if present
     env_path = get_env_path()
     if os.path.exists(env_path):
         load_dotenv(env_path)
     else:
-        # Fallback to .env.example if .env has not been created yet
         app_dir = os.path.dirname(env_path)
         example_env = os.path.join(app_dir, ".env.example")
         if os.path.exists(example_env):
@@ -279,7 +297,7 @@ def main():
     # Enable clean terminal exit with Ctrl+C
     signal.signal(signal.SIGINT, lambda *args: app.quit())
 
-    # Check for first-time run (no valid Groq API key configured)
+    # Check for first-time run
     groq_key = os.getenv("GROQ_API_KEY", "").strip()
     is_first_run = (
         not groq_key
@@ -294,7 +312,6 @@ def main():
         if welcome_dlg.exec() != SettingsDialog.DialogCode.Accepted:
             logger.info("Setup wizard dismissed by user. Exiting...")
             sys.exit(0)
-        # Reload environment variables after saving
         load_dotenv(env_path, override=True)
 
     # Create minimalist floating HUD window
@@ -312,11 +329,19 @@ def main():
     # Connect HUD UI actions to worker
     hud.request_toggle_pause.connect(pipeline_worker.toggle_pause)
     hud.request_clear.connect(pipeline_worker.clear_history)
+    hud.request_change_response_language.connect(pipeline_worker.update_response_language)
+
+    # Initialize HUD's response language dropdown to match saved preference
+    hud.set_active_response_language(pipeline_worker.response_lang)
 
     # Connect settings button ⚙️
     def open_settings_modal():
         dlg = SettingsDialog(hud, is_first_run=False)
-        dlg.settings_saved.connect(pipeline_worker.update_config)
+        def on_settings_saved(cfg):
+            pipeline_worker.update_config(cfg)
+            if "response_lang" in cfg:
+                hud.set_active_response_language(cfg["response_lang"])
+        dlg.settings_saved.connect(on_settings_saved)
         dlg.exec()
 
     hud.request_open_settings.connect(open_settings_modal)

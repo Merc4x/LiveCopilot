@@ -1,7 +1,8 @@
 """
-LiveCopilot - Real-Time Conversational Assistance Engine (LLM)
-Generates instant conversational response suggestions and key talking points using
-Groq (Llama-3.3-70b / Qwen) or Google Gemini (Gemini-2.5-Flash / 1.5-Flash).
+LiveCopilot - Real-Time Multilingual Conversational Assistance Engine (LLM)
+Generates instant conversational response suggestions and key talking points in any target language
+while translating heard speech and meanings into the user's primary/native language.
+Supports Groq (Llama-3.3-70b / Qwen) and Google Gemini (Gemini-2.5-Flash / 1.5-Flash).
 """
 
 import collections
@@ -12,24 +13,34 @@ from typing import Deque, Dict, Optional, Tuple
 
 logger = logging.getLogger("LiveCopilot.Assistant")
 
-SYSTEM_PROMPT = (
-    "You are a real-time conversational co-pilot for video calls, English interviews, and meetings.\n"
-    "Your goal is to help the user immediately understand what was said and know how to respond "
-    "in natural, fluent English with phonetic pronunciation guidance so they can speak with confidence.\n"
-    "Required response structure (strict 4 lines):\n"
-    "HEARD_TRANS: <Spanish translation of what the other person just said>\n"
-    "RESPONSE: <The exact, natural, concise phrase the user should say in English (1-2 sentences)>\n"
-    "PRONUNCIATION: <Approximated phonetic pronunciation guide written for Spanish speakers, with accent marks on stressed syllables for fluent reading, e.g. 'Di ánser is ráis bicós...'>\n"
-    "MEANING: <Spanish meaning/translation of the suggested response>\n\n"
-    "RULES:\n"
-    "- Respond directly with the 4 tags, without introductions, greetings, or extra commentary.\n"
-    "- PRONUNCIATION must be intuitive for Spanish speakers (e.g., using 'u' for 'w', 'di' for 'the', accents on tonic syllables)."
-)
+
+def build_system_prompt(native_language: str = "Spanish", response_language: str = "English") -> str:
+    """
+    Constructs an optimized system prompt dynamically tailored to the user's native
+    language and the target response language they want to speak in.
+    """
+    return (
+        f"You are a real-time conversational co-pilot for video calls, international meetings, interviews, and live speech.\n"
+        f"User's native/primary language: {native_language}\n"
+        f"Target language the user must speak/respond in: {response_language}\n\n"
+        f"Your goal is to help the user immediately understand what was said (translated into {native_language}) and know exactly "
+        f"what to say back in natural, fluent {response_language}, accompanied by an intuitive phonetic pronunciation guide tailored for a {native_language} speaker.\n\n"
+        f"Required response structure (strict 4 lines):\n"
+        f"HEARD_TRANS: <Translation of what the other person said into {native_language}>\n"
+        f"RESPONSE: <The exact, natural, concise phrase the user should speak in {response_language} (1-2 sentences)>\n"
+        f"PRONUNCIATION: <Approximated phonetic pronunciation guide tailored for a {native_language} speaker to pronounce the {response_language} phrase naturally (e.g. for English use accented syllables like 'Di ánser is...', for Chinese use Pinyin with tone accents or phonetic guide, for Japanese Romaji, etc.)>\n"
+        f"MEANING: <Meaning/explanation of the suggested response in {native_language}>\n\n"
+        f"RULES:\n"
+        f"- Respond directly with the 4 tags, without introductions, greetings, or extra commentary.\n"
+        f"- Keep the suggested response concise, culturally authentic, and natural for live dialogue.\n"
+        f"- The PRONUNCIATION must be easy to read out loud for a {native_language} speaker."
+    )
 
 
 class LiveAssistant:
     """
-    Conversational co-pilot with a sliding context window and ultra-low latency.
+    Conversational co-pilot with a sliding context window, ultra-low latency,
+    and dynamic multi-language switching.
     """
 
     def __init__(
@@ -37,17 +48,26 @@ class LiveAssistant:
         provider: str = "groq",
         groq_api_key: Optional[str] = None,
         gemini_api_key: Optional[str] = None,
+        native_language: str = "Spanish",
+        response_language: str = "English",
         max_history_turns: int = 4,
     ):
         """
         :param provider: 'groq' or 'gemini'.
         :param groq_api_key: API Key for Groq.
         :param gemini_api_key: API Key for Google Gemini.
+        :param native_language: The language the user understands best (e.g., 'Spanish').
+        :param response_language: The language the user wants to speak back in (e.g., 'English', 'Chinese', etc.).
         :param max_history_turns: Number of recent conversational turns retained in memory.
         """
         self.provider = provider.lower().strip()
         self.groq_api_key = groq_api_key or os.getenv("GROQ_API_KEY", "").strip()
         self.gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY", "").strip()
+        self.native_language = native_language or os.getenv("USER_NATIVE_LANG", "Spanish").strip()
+        self.response_language = response_language or os.getenv("RESPONSE_LANG", "English").strip()
+
+        # Dynamic system prompt
+        self.system_prompt = build_system_prompt(self.native_language, self.response_language)
 
         # Short-term contextual memory
         self.history: Deque[Dict[str, str]] = collections.deque(maxlen=max_history_turns * 2)
@@ -57,6 +77,23 @@ class LiveAssistant:
         self.gemini_client = None
 
         self._init_providers()
+
+    def set_languages(self, native_language: str, response_language: str):
+        """Update both native language and response language dynamically."""
+        self.native_language = native_language.strip()
+        self.response_language = response_language.strip()
+        self.system_prompt = build_system_prompt(self.native_language, self.response_language)
+        logger.info(
+            "Assistant languages updated -> Native: %s | Response: %s",
+            self.native_language,
+            self.response_language,
+        )
+
+    def set_response_language(self, response_language: str):
+        """Update the target response language on the fly."""
+        self.response_language = response_language.strip()
+        self.system_prompt = build_system_prompt(self.native_language, self.response_language)
+        logger.info("Assistant response language updated to: %s", self.response_language)
 
     def _init_providers(self):
         """Initialize AI clients based on available credentials."""
@@ -70,7 +107,6 @@ class LiveAssistant:
 
         if self.gemini_api_key:
             try:
-                # Support for google-genai or google-generativeai SDKs
                 try:
                     from google import genai
                     self.gemini_client = genai.Client(api_key=self.gemini_api_key)
@@ -80,7 +116,7 @@ class LiveAssistant:
                     gai.configure(api_key=self.gemini_api_key)
                     self.gemini_client = gai.GenerativeModel(
                         model_name="gemini-1.5-flash",
-                        system_instruction=SYSTEM_PROMPT,
+                        system_instruction=self.system_prompt,
                     )
                     self._gemini_type = "generativeai"
                 logger.info("Gemini LLM client initialized successfully (%s).", self._gemini_type)
@@ -92,12 +128,11 @@ class LiveAssistant:
         if not self.groq_client:
             raise RuntimeError("Groq client not available.")
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages = [{"role": "system", "content": self.system_prompt}]
         for item in self.history:
             messages.append(item)
         messages.append({"role": "user", "content": f"The other speaker said: \"{prompt_text}\""})
 
-        # Candidate models ordered by speed, capability, and availability
         candidate_models = [
             "qwen/qwen3.8-27b",
             "openai/gpt-oss-20b",
@@ -105,7 +140,6 @@ class LiveAssistant:
             "groq/compound-mini",
         ]
 
-        # Prioritize previously validated working model in this session
         if hasattr(self, "_preferred_groq_model") and self._preferred_groq_model:
             candidate_models.insert(0, self._preferred_groq_model)
 
@@ -115,7 +149,7 @@ class LiveAssistant:
                 response = self.groq_client.chat.completions.create(
                     model=model_name,
                     messages=messages,
-                    max_tokens=150,
+                    max_tokens=160,
                     temperature=0.3,
                 )
                 self._preferred_groq_model = model_name
@@ -138,14 +172,14 @@ class LiveAssistant:
             f"Recent conversation context:\n"
             + "\n".join([f"{item['role']}: {item['content']}" for item in self.history])
             + f"\n\nWhat was just said: \"{prompt_text}\"\n"
-            f"Your concise suggested response (1-2 direct sentences):"
+            f"Your concise suggested response in {self.response_language} (1-2 direct sentences):"
         )
 
         if self._gemini_type == "google-genai":
             response = self.gemini_client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=full_prompt,
-                config={"system_instruction": SYSTEM_PROMPT, "max_output_tokens": 100},
+                config={"system_instruction": self.system_prompt, "max_output_tokens": 120},
             )
             return response.text.strip()
         else:
@@ -179,7 +213,6 @@ class LiveAssistant:
                     except Exception as err2:
                         logger.error("Both LLM providers failed: %s", err2)
         else:
-            # Default or provider == "groq"
             if self.groq_client:
                 try:
                     suggestion = self._generate_groq(heard_text)
@@ -213,7 +246,7 @@ class LiveAssistant:
         """
         Extract the 4 structured blocks:
         - Translation of heard speech
-        - Suggested English response
+        - Suggested response in target language
         - Phonetic pronunciation guide
         - Meaning of response
         """
