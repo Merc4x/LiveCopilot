@@ -1,8 +1,8 @@
 """
-LiveCopilot - Módulo de Detección de Actividad de Voz (VAD)
-Segmenta el flujo continuo de audio utilizando Silero-VAD (PyTorch)
-o cálculo dinámico de energía RMS como fallback inteligente.
-Emite segmentos completos de voz cuando el silencio supera el umbral configurado (1800 ms por defecto).
+LiveCopilot - Voice Activity Detection Module (VAD)
+Segments continuous audio streams using deep-learning Silero-VAD (PyTorch)
+with dynamic RMS energy calculation as an intelligent fallback.
+Emits complete speech segments when silence exceeds the configured threshold (default: 1800 ms).
 """
 
 import collections
@@ -16,8 +16,8 @@ logger = logging.getLogger("LiveCopilot.VADDetector")
 
 class VADDetector:
     """
-    Detector de actividad de voz con buffer dinámico, pre-roll para no cortar
-    consonantes iniciales y temporizador de silencio para segmentar intervenciones.
+    Voice activity detector with dynamic buffering, pre-roll to prevent clipping
+    initial consonants, and silence timing for sentence/paragraph segmentation.
     """
 
     def __init__(
@@ -29,11 +29,11 @@ class VADDetector:
         max_speech_duration_sec: float = 30.0,
     ):
         """
-        :param sample_rate: Frecuencia de muestreo (16000 Hz).
-        :param silence_timeout_ms: Tiempo de silencio requerido para cerrar el segmento (1800 ms por defecto para frases completas).
-        :param vad_threshold: Umbral de probabilidad de habla (0.1 a 0.9).
-        :param min_speech_duration_sec: Duración mínima acumulada para descartar chasquidos o ruidos breves.
-        :param max_speech_duration_sec: Límite máximo para forzar corte en intervenciones ininterrumpidas.
+        :param sample_rate: Audio sample rate in Hz (16,000 Hz).
+        :param silence_timeout_ms: Silence duration required to close segment (1800 ms default for full sentences).
+        :param vad_threshold: Voice probability threshold (0.1 to 0.9).
+        :param min_speech_duration_sec: Minimum speech duration to filter out clicks or noise bursts.
+        :param max_speech_duration_sec: Upper bound to force segmentation during uninterrupted monologues.
         """
         self.sample_rate = sample_rate
         self.silence_timeout_ms = silence_timeout_ms
@@ -41,32 +41,32 @@ class VADDetector:
         self.min_speech_duration_sec = min_speech_duration_sec
         self.max_speech_duration_sec = max_speech_duration_sec
 
-        # Estado del VAD
+        # VAD State
         self.is_speech_active = False
         self.silence_counter_ms = 0.0
         self.speech_buffer: List[np.ndarray] = []
 
-        # Buffer circular de pre-roll (~320 ms = 10 chunks de 32ms) para conservar el inicio del habla intacto
+        # Circular pre-roll buffer (~320 ms = 10 chunks of 32ms) to preserve initial speech consonants
         self.preroll_buffer: Deque[np.ndarray] = collections.deque(maxlen=10)
 
-        # Inicialización del modelo Silero-VAD
+        # Initialize Silero-VAD deep learning model
         self.model = None
         self.torch = None
         self.use_silero = self._init_silero()
 
-        # Parámetros para fallback RMS dinámico
+        # Parameters for adaptive RMS fallback
         self._ambient_rms = 0.005
         self._rms_alpha = 0.95
 
     def _init_silero(self) -> bool:
-        """Carga el modelo Silero VAD usando PyTorch con gestión de excepciones."""
+        """Loads the Silero-VAD PyTorch model with graceful exception handling."""
         try:
             import torch
             self.torch = torch
-            # Desactivar gradientes para optimizar latencia y memoria
+            # Disable autograd gradients for optimized latency and zero memory overhead
             torch.set_grad_enabled(False)
 
-            logger.info("Cargando modelo Silero-VAD...")
+            logger.info("Loading Silero-VAD model...")
             model, _ = torch.hub.load(
                 repo_or_dir="snakers4/silero-vad",
                 model="silero_vad",
@@ -75,24 +75,24 @@ class VADDetector:
             )
             model.eval()
             self.model = model
-            logger.info("Silero-VAD cargado exitosamente en memoria.")
+            logger.info("Silero-VAD loaded successfully into memory.")
             return True
         except Exception as e:
             logger.warning(
-                "No se pudo inicializar Silero-VAD (%s). Se activará el motor RMS adaptativo.", e
+                "Could not initialize Silero-VAD (%s). Engaging adaptive RMS fallback engine.", e
             )
             self.model = None
             return False
 
     def _predict_speech_probability(self, chunk: np.ndarray) -> float:
         """
-        Evalúa si un bloque de audio contiene voz humana.
-        :param chunk: Array 1D float32 de 512 muestras.
-        :return: Probabilidad de habla entre 0.0 y 1.0.
+        Evaluates whether an audio chunk contains human voice activity.
+        :param chunk: 1D float32 array of 512 samples.
+        :return: Speech probability between 0.0 and 1.0.
         """
         if self.use_silero and self.model is not None and self.torch is not None:
             try:
-                # Silero VAD requiere entrada en 16000Hz con exactamente 512 muestras
+                # Silero-VAD requires exactly 512 samples at 16,000 Hz
                 if len(chunk) != 512:
                     if len(chunk) < 512:
                         chunk = np.pad(chunk, (0, 512 - len(chunk)))
@@ -100,20 +100,19 @@ class VADDetector:
                         chunk = chunk[:512]
 
                 tensor_chunk = self.torch.from_numpy(chunk).float()
-                # Salida escalar de probabilidad
                 prob = float(self.model(tensor_chunk, self.sample_rate).item())
                 return prob
             except Exception as e:
-                logger.debug("Fallo en inferencia Silero, usando RMS: %s", e)
+                logger.debug("Silero inference fallback to RMS: %s", e)
 
-        # Fallback inteligente: Detección adaptativa por energía RMS
+        # Intelligent Fallback: Adaptive RMS energy detection
         rms = float(np.sqrt(np.mean(np.square(chunk)))) if chunk.size > 0 else 0.0
 
-        # Actualizar piso de ruido ambiental de forma suave
+        # Smoothly track background ambient noise floor
         if rms < self._ambient_rms * 1.5:
             self._ambient_rms = self._rms_alpha * self._ambient_rms + (1 - self._rms_alpha) * rms
 
-        # Relación de señal a ruido (SNR estimado)
+        # Estimated Signal-to-Noise Ratio (SNR)
         snr_ratio = rms / (self._ambient_rms + 1e-6)
         if snr_ratio > 3.0 and rms > 0.012:
             return 0.85
@@ -124,12 +123,12 @@ class VADDetector:
 
     def process_chunk(self, chunk: np.ndarray) -> Tuple[Optional[np.ndarray], bool, float]:
         """
-        Procesa un bloque de audio entrante y actualiza el estado de la intervención.
-        :param chunk: Bloque de audio float32 (512 muestras típicas a 16kHz).
+        Processes an incoming audio chunk and updates speech activity state.
+        :param chunk: float32 audio chunk (typically 512 samples at 16kHz).
         :return: Tuple:
-            - speech_segment (np.ndarray completo o None si aún no se cierra la intervención)
-            - is_speaking (True si actualmente se detecta voz activa)
-            - speech_prob (probabilidad de habla del bloque actual)
+            - speech_segment (complete np.ndarray or None if utterance is still ongoing)
+            - is_speaking (True if currently in active speech)
+            - speech_prob (speech probability for the current block)
         """
         chunk_duration_ms = (len(chunk) / self.sample_rate) * 1000.0
         prob = self._predict_speech_probability(chunk)
@@ -139,22 +138,21 @@ class VADDetector:
 
         if is_current_frame_speech:
             if not self.is_speech_active:
-                # Inicio de nueva intervención: incorporar el audio previo del pre-roll
+                # Start of a new utterance: prepend pre-roll audio
                 self.is_speech_active = True
                 self.speech_buffer = list(self.preroll_buffer)
-                logger.debug("Inicio de intervención detectado (Prob: %.2f)", prob)
+                logger.debug("Speech start detected (Prob: %.2f)", prob)
 
             self.speech_buffer.append(chunk)
             self.silence_counter_ms = 0.0
 
         else:
             if self.is_speech_active:
-                # Continúa dentro de la intervención pero en pausa momentánea
+                # Currently within an ongoing utterance during a momentary breath/pause
                 self.speech_buffer.append(chunk)
                 self.silence_counter_ms += chunk_duration_ms
 
-                # Comprobación de fin de intervención por silencio prolongado (>600ms)
-                # o por límite de duración máxima
+                # Check if silence threshold or maximum duration is reached
                 current_duration_sec = sum(len(c) for c in self.speech_buffer) / self.sample_rate
 
                 if (
@@ -162,8 +160,7 @@ class VADDetector:
                     or current_duration_sec >= self.max_speech_duration_sec
                 ):
                     if current_duration_sec >= self.min_speech_duration_sec:
-                        # Recortar el exceso de silencio final para que Whisper no procese 1.8s de silencio
-                        # pero conservando ~350 ms de decaimiento natural
+                        # Trim excess trailing silence to save inference time while keeping natural decay (~350ms)
                         silence_chunks_count = int(self.silence_counter_ms / chunk_duration_ms)
                         keep_silence_chunks = min(silence_chunks_count, 11)
                         if silence_chunks_count > keep_silence_chunks:
@@ -174,25 +171,25 @@ class VADDetector:
 
                         completed_segment = np.concatenate(buffer_to_send)
                         logger.info(
-                            "Segmento de voz cerrado: %.2f s (Silencio esperado: %.0f ms).",
+                            "Speech segment completed: %.2f s (Silence: %.0f ms).",
                             len(completed_segment) / self.sample_rate,
                             self.silence_counter_ms,
                         )
 
-                    # Resetear estado
+                    # Reset internal state
                     self.speech_buffer = []
                     self.is_speech_active = False
                     self.silence_counter_ms = 0.0
             else:
-                # Audio sin actividad de voz: alimentar buffer circular de pre-roll
+                # Non-speech audio: feed circular pre-roll buffer
                 self.preroll_buffer.append(chunk)
 
         return completed_segment, self.is_speech_active, prob
 
     def flush(self) -> Optional[np.ndarray]:
         """
-        Cierra forzosamente la intervención actual al pausar y devuelve el audio
-        acumulado hasta el momento (si supera ~0.35s de habla).
+        Forcibly closes the current speech buffer upon manual pause and returns
+        the audio accumulated so far (if >= 0.35s).
         """
         completed_segment = None
         buffer_to_send = list(self.speech_buffer) if self.speech_buffer else []
@@ -204,7 +201,7 @@ class VADDetector:
             if current_duration_sec >= 0.35:
                 completed_segment = np.concatenate(buffer_to_send)
                 logger.info(
-                    "Segmento de voz tomado por pausa manual: %.2f s.",
+                    "Speech segment flushed on manual pause: %.2f s.",
                     current_duration_sec,
                 )
 
@@ -212,7 +209,7 @@ class VADDetector:
         return completed_segment
 
     def reset(self):
-        """Reinicia los acumuladores y buffers internos."""
+        """Resets accumulators, state counters, and internal buffers."""
         self.is_speech_active = False
         self.silence_counter_ms = 0.0
         self.speech_buffer.clear()

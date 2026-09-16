@@ -1,8 +1,8 @@
 """
-LiveCopilot - Motor de Transcripción y Traducción STT de Ultra-Baja Latencia
-Soporte dual con conmutación automática:
-  - Primario (Nube, <300ms): Groq API con Whisper-large-v3.
-  - Fallback (Local): faster-whisper con aceleración CTranslate2 (CUDA/CPU).
+LiveCopilot - Ultra-Low Latency STT Transcription & Translation Engine
+Dual-mode support with automatic failover:
+  - Primary (Cloud, <300ms): Groq API with Whisper-large-v3.
+  - Fallback (Local): faster-whisper with CTranslate2 acceleration (CUDA/CPU).
 """
 
 import io
@@ -19,8 +19,8 @@ logger = logging.getLogger("LiveCopilot.Transcriber")
 
 class TranscriberEngine:
     """
-    Motor de transcripción/traducción de voz a texto con redundancia nube-local.
-    Garantiza latencia mínima y funcionamiento continuo incluso sin internet.
+    Speech-to-text transcription and translation engine with cloud-local redundancy.
+    Ensures minimal latency and uninterrupted operation even during connectivity drops.
     """
 
     def __init__(
@@ -34,13 +34,13 @@ class TranscriberEngine:
         target_language: str = "es",
     ):
         """
-        :param stt_mode: 'cloud' o 'local'.
-        :param groq_api_key: Clave API de Groq Cloud.
-        :param fallback_to_local: Conmutar a local automáticamente si la nube falla.
-        :param local_model_size: Tamaño del modelo faster-whisper ('tiny', 'base', 'small').
-        :param local_device: 'cuda' o 'cpu'.
-        :param local_compute_type: 'float16' para GPU CUDA, 'int8' para CPU.
-        :param target_language: Idioma objetivo ('es' para español).
+        :param stt_mode: 'cloud' or 'local'.
+        :param groq_api_key: Groq Cloud API key.
+        :param fallback_to_local: Automatically switch to local engine if cloud request fails.
+        :param local_model_size: faster-whisper model size ('tiny', 'base', 'small').
+        :param local_device: 'cuda' or 'cpu'.
+        :param local_compute_type: 'float16' for CUDA GPU, 'int8' for CPU.
+        :param target_language: Target ISO language code ('es', 'en', etc.).
         """
         self.stt_mode = stt_mode.lower().strip()
         self.groq_api_key = groq_api_key or os.getenv("GROQ_API_KEY", "").strip()
@@ -50,26 +50,26 @@ class TranscriberEngine:
         self.local_compute_type = local_compute_type
         self.target_language = target_language
 
-        # Cliente Groq
+        # Groq client
         self.groq_client = None
         if self.groq_api_key:
             self._init_groq()
 
-        # Modelo local faster-whisper (Carga perezosa para inicio instantáneo)
+        # Local faster-whisper model (lazy-loaded for instant startup)
         self.local_model = None
 
     def _init_groq(self):
-        """Inicializa el cliente de Groq API."""
+        """Initialize the Groq API client."""
         try:
             from groq import Groq
             self.groq_client = Groq(api_key=self.groq_api_key, timeout=4.0)
-            logger.info("Cliente Groq API inicializado correctamente.")
+            logger.info("Groq API client initialized successfully.")
         except Exception as e:
-            logger.warning("No se pudo inicializar el cliente Groq: %s", e)
+            logger.warning("Failed to initialize Groq client: %s", e)
             self.groq_client = None
 
     def _init_local_whisper(self) -> bool:
-        """Carga el modelo faster-whisper bajo demanda en memoria."""
+        """Load faster-whisper model on demand into memory."""
         if self.local_model is not None:
             return True
 
@@ -80,14 +80,14 @@ class TranscriberEngine:
             device = self.local_device
             compute_type = self.local_compute_type
 
-            # Ajuste automático de CUDA si está disponible
+            # Automatic fallback if CUDA is requested but unavailable
             if device == "cuda" and not torch.cuda.is_available():
-                logger.warning("CUDA no disponible en el sistema. Cambiando a CPU.")
+                logger.warning("CUDA is not available on this system. Falling back to CPU.")
                 device = "cpu"
                 compute_type = "int8"
 
             logger.info(
-                "Cargando faster-whisper en local (Modelo: %s, Dispositivo: %s, Cómputo: %s)...",
+                "Loading local faster-whisper (Model: %s, Device: %s, Compute: %s)...",
                 self.local_model_size,
                 device,
                 compute_type,
@@ -98,18 +98,18 @@ class TranscriberEngine:
                 compute_type=compute_type,
                 cpu_threads=4,
             )
-            logger.info("Modelo local faster-whisper listo.")
+            logger.info("Local faster-whisper model ready.")
             return True
         except Exception as e:
-            logger.error("Error al cargar faster-whisper local: %s", e)
+            logger.error("Error loading local faster-whisper: %s", e)
             return False
 
     @staticmethod
     def _float32_to_wav_bytes(audio_array: np.ndarray, sample_rate: int = 16000) -> bytes:
         """
-        Convierte un array float32 de audio en bytes WAV en memoria sin escribir en disco.
+        Convert a float32 audio array to in-memory WAV bytes without disk I/O.
         """
-        # Normalizar y convertir a enteros con signo de 16 bits (PCM16)
+        # Normalize and convert to 16-bit signed integers (PCM16)
         clamped = np.clip(audio_array, -1.0, 1.0)
         pcm16 = (clamped * 32767).astype(np.int16)
 
@@ -124,9 +124,9 @@ class TranscriberEngine:
         return buf.getvalue()
 
     def _transcribe_groq(self, audio_array: np.ndarray) -> str:
-        """Transcribe utilizando Groq Whisper Cloud."""
+        """Transcribe audio using Groq Whisper Cloud."""
         if not self.groq_client:
-            raise RuntimeError("Cliente Groq no configurado o API Key ausente.")
+            raise RuntimeError("Groq client not configured or API Key is missing.")
 
         wav_bytes = self._float32_to_wav_bytes(audio_array)
         file_payload = ("audio_stream.wav", wav_bytes, "audio/wav")
@@ -144,16 +144,16 @@ class TranscriberEngine:
         return response.text.strip()
 
     def _transcribe_local(self, audio_array: np.ndarray) -> str:
-        """Transcribe utilizando faster-whisper local."""
+        """Transcribe audio using local faster-whisper."""
         if not self._init_local_whisper() or self.local_model is None:
-            raise RuntimeError("El modelo faster-whisper no se encuentra disponible.")
+            raise RuntimeError("faster-whisper model is not available.")
 
-        # faster-whisper acepta directamente el array numpy float32 normalizado
+        # faster-whisper directly accepts normalized float32 numpy arrays
         segments, _ = self.local_model.transcribe(
             audio_array,
             language=self.target_language,
             beam_size=2,
-            vad_filter=False,  # Ya filtramos previamente con Silero
+            vad_filter=False,  # Audio is already pre-filtered by Silero VAD
             temperature=0.0,
         )
         text_parts = [segment.text.strip() for segment in segments]
@@ -161,41 +161,41 @@ class TranscriberEngine:
 
     def transcribe(self, audio_array: np.ndarray) -> Tuple[str, float, str]:
         """
-        Transcribe el fragmento de audio con failover automático.
-        :param audio_array: Array 1D float32 a 16000Hz.
+        Transcribe an audio chunk with automatic failover.
+        :param audio_array: 1D float32 array sampled at 16000Hz.
         :return: Tuple:
-            - text: Texto transcrito/traducido.
-            - latency_ms: Tiempo de inferencia en milisegundos.
-            - engine: 'Groq Cloud' o 'Local Whisper'.
+            - text: Transcribed text.
+            - latency_ms: Inference time in milliseconds.
+            - engine: 'Groq Cloud' or 'Local Whisper'.
         """
         t_start = time.perf_counter()
-        engine_used = "Desconocido"
+        engine_used = "Unknown"
         text = ""
 
-        # Intento primario
+        # Primary attempt: Groq Cloud
         if self.stt_mode == "cloud" and self.groq_client is not None:
             try:
                 text = self._transcribe_groq(audio_array)
                 engine_used = "Groq Cloud (<300ms)"
             except Exception as e:
-                logger.warning("Fallo en transcripción en la nube Groq: %s", e)
+                logger.warning("Groq Cloud transcription failed: %s", e)
                 if self.fallback_to_local:
-                    logger.info("Activando conmutación por error a faster-whisper local...")
+                    logger.info("Triggering automatic failover to local faster-whisper...")
                     try:
                         text = self._transcribe_local(audio_array)
                         engine_used = "Local Whisper (Fallback)"
                     except Exception as local_err:
-                        logger.error("Fallo tanto en Cloud como en Local: %s", local_err)
+                        logger.error("Both Cloud and Local transcription failed: %s", local_err)
                         text = ""
                 else:
                     text = ""
         else:
-            # Modo local forzado o sin credenciales de Groq
+            # Enforced local mode or missing Groq credentials
             try:
                 text = self._transcribe_local(audio_array)
                 engine_used = "Local Whisper"
             except Exception as e:
-                logger.error("Error en transcripción local: %s", e)
+                logger.error("Local transcription error: %s", e)
                 text = ""
 
         latency_ms = (time.perf_counter() - t_start) * 1000.0

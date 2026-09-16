@@ -1,7 +1,7 @@
 """
-LiveCopilot - Módulo de Captura de Audio Interno (WASAPI Loopback)
-Captura la salida de audio predeterminada de Windows en tiempo real (16kHz, mono, float32)
-sin bloquear el hilo principal.
+LiveCopilot - Internal Audio Capture Module (WASAPI Loopback)
+Captures default Windows speaker audio output in real time (16kHz, mono, float32)
+without blocking the main user interface.
 """
 
 import logging
@@ -18,8 +18,8 @@ logger = logging.getLogger("LiveCopilot.AudioCapture")
 
 class AudioCapture:
     """
-    Captura de audio en bucle (WASAPI Loopback) desde el altavoz predeterminado de Windows.
-    Alimenta una cola en memoria con bloques de audio de 16000 Hz en formato float32.
+    Loopback audio capture (WASAPI Loopback) from Windows speaker output.
+    Feeds an in-memory queue with 16,000 Hz float32 audio chunks.
     """
 
     def __init__(
@@ -31,11 +31,11 @@ class AudioCapture:
         on_audio_level: Optional[Callable[[float], None]] = None,
     ):
         """
-        :param sample_rate: Frecuencia de muestreo (16000 Hz óptima para Whisper y Silero-VAD).
-        :param block_size: Tamaño de bloque por muestra (512 muestras = 32ms a 16kHz).
-        :param max_queue_size: Tamaño máximo de la cola para prevenir buffer bloat.
-        :param device_id: ID específico del dispositivo loopback a capturar (o None para el predeterminado).
-        :param on_audio_level: Callback opcional para transmitir el nivel RMS del audio (0.0 a 1.0).
+        :param sample_rate: Audio sample rate (16,000 Hz optimal for Whisper and Silero-VAD).
+        :param block_size: Block size per buffer read (512 samples = 32ms at 16kHz).
+        :param max_queue_size: Maximum queue capacity to prevent buffer bloat.
+        :param device_id: Specific loopback device ID to capture (or None for default).
+        :param on_audio_level: Optional callback to stream normalized RMS audio levels (0.0 to 1.0).
         """
         self.sample_rate = sample_rate
         self.block_size = block_size
@@ -51,8 +51,8 @@ class AudioCapture:
     @staticmethod
     def get_available_devices():
         """
-        Retorna la lista de todos los dispositivos de audio loopback disponibles en la PC
-        (altavoces, auriculares, monitores, cables virtuales).
+        Returns all loopback-capable audio output devices available on the system
+        (speakers, headphones, monitors, virtual audio cables).
         """
         devices = []
         try:
@@ -67,7 +67,7 @@ class AudioCapture:
             for mic in sc.all_microphones(include_loopback=True):
                 if getattr(mic, "isloopback", False):
                     is_def = (mic.id == default_id)
-                    label = f"{mic.name} (Por defecto)" if is_def else mic.name
+                    label = f"{mic.name} (Default)" if is_def else mic.name
                     devices.append({
                         "id": mic.id,
                         "name": mic.name,
@@ -75,14 +75,14 @@ class AudioCapture:
                         "is_default": is_def,
                     })
         except Exception as e:
-            logger.error("Error al enumerar dispositivos de audio: %s", e)
+            logger.error("Error enumerating audio devices: %s", e)
         return devices
 
     def set_device(self, device_id: Optional[str]):
-        """Cambia dinámicamente el dispositivo de captura de audio sin reiniciar la app."""
+        """Dynamically switches audio capture device without restarting the application."""
         if self.device_id == device_id:
             return
-        logger.info("Cambiando dispositivo de audio a: %s", device_id)
+        logger.info("Switching audio device to: %s", device_id)
         self.device_id = device_id
         if self.is_running():
             was_paused = self.is_paused()
@@ -92,9 +92,9 @@ class AudioCapture:
                 self.pause()
 
     def start(self):
-        """Inicia el hilo en segundo plano para la captura de audio."""
+        """Starts background worker thread for loopback audio recording."""
         if self._thread is not None and self._thread.is_alive():
-            logger.warning("El hilo de captura de audio ya se encuentra en ejecución.")
+            logger.warning("Audio capture thread is already running.")
             return
 
         self._is_running.set()
@@ -105,39 +105,39 @@ class AudioCapture:
             daemon=True,
         )
         self._thread.start()
-        logger.info("Captura de audio WASAPI Loopback iniciada a %d Hz.", self.sample_rate)
+        logger.info("WASAPI Loopback audio capture started at %d Hz.", self.sample_rate)
 
     def pause(self):
-        """Pausa la captura de audio sin desconectar el dispositivo."""
+        """Pauses audio ingestion without unbinding the device."""
         self._is_paused.set()
-        logger.info("Captura de audio pausada.")
+        logger.info("Audio capture paused.")
 
     def resume(self):
-        """Reanuda la captura de audio."""
+        """Resumes audio ingestion."""
         self._is_paused.clear()
-        logger.info("Captura de audio reanudada.")
+        logger.info("Audio capture resumed.")
 
     def is_paused(self) -> bool:
-        """Verifica si la captura está pausada."""
+        """Returns True if capture is currently paused."""
         return self._is_paused.is_set()
 
     def is_running(self) -> bool:
-        """Verifica si el hilo de captura sigue activo."""
+        """Returns True if the background recording thread is active."""
         return self._is_running.is_set()
 
     def stop(self):
-        """Detiene la captura de audio y libera los recursos del hardware."""
+        """Stops audio capture and releases hardware resources."""
         self._is_running.clear()
         self._is_paused.clear()
         if self._thread is not None:
             self._thread.join(timeout=1.5)
             self._thread = None
-        logger.info("Captura de audio detenida correctamente.")
+        logger.info("Audio capture stopped cleanly.")
 
     def get_chunk(self, timeout: float = 0.1) -> Optional[np.ndarray]:
         """
-        Obtiene un bloque de audio de la cola de forma segura.
-        :return: Array 1D numpy en float32 o None si no hay datos disponibles en el tiempo límite.
+        Safely retrieves a float32 audio chunk from the buffer queue.
+        :return: 1D numpy array in float32 format or None if queue was empty within timeout.
         """
         try:
             return self.audio_queue.get(timeout=timeout)
@@ -145,78 +145,77 @@ class AudioCapture:
             return None
 
     def _capture_worker(self):
-        """Hilo de trabajo que gestiona la conexión con el altavoz predeterminado vía WASAPI Loopback."""
+        """Worker thread loop interfacing with Windows WASAPI Loopback recorder."""
         import warnings
-        # Suprimir advertencias de buffer no críticas de soundcard
         warnings.filterwarnings("ignore", category=sc.SoundcardRuntimeWarning)
 
         loopback_mic = None
         try:
-            # 1. Si el usuario configuró un dispositivo específico
+            # 1. Custom user device
             if self.device_id:
                 try:
                     loopback_mic = sc.get_microphone(id=self.device_id, include_loopback=True)
-                    logger.info("Usando dispositivo de audio seleccionado por el usuario: %s", loopback_mic.name)
+                    logger.info("Using user-selected audio device: %s", loopback_mic.name)
                 except Exception as e:
-                    logger.warning("Fallo al abrir dispositivo de audio seleccionado (%s): %s", self.device_id, e)
+                    logger.warning("Failed to open selected audio device (%s): %s", self.device_id, e)
 
-            # 2. Si no hay seleccionado o falló, usar el altavoz predeterminado
+            # 2. System default speaker loopback
             if loopback_mic is None:
                 speaker = sc.default_speaker()
-                logger.info("Dispositivo de salida predeterminado: %s", speaker.name)
+                logger.info("Default system speaker: %s", speaker.name)
                 try:
                     loopback_mic = sc.get_microphone(id=speaker.id, include_loopback=True)
                 except Exception as e:
-                    logger.warning("Fallo al buscar loopback por id de altavoz: %s", e)
+                    logger.warning("Failed to find loopback for default speaker: %s", e)
 
-            # 3. Fallback: Buscar en la lista de todos los micrófonos con loopback habilitado
+            # 3. Fallback discovery among all available microphones
             if loopback_mic is None:
                 for mic in sc.all_microphones(include_loopback=True):
                     if getattr(mic, "isloopback", False):
                         loopback_mic = mic
-                        logger.info("Dispositivo loopback alternativo encontrado: %s", mic.name)
+                        logger.info("Alternative loopback device discovered: %s", mic.name)
                         break
 
         except Exception as e:
-            logger.error("No se pudo inicializar la captura de audio: %s", e)
+            logger.error("Could not initialize audio capture: %s", e)
             return
 
         if loopback_mic is None:
-            logger.error("No fue posible encontrar ningún dispositivo WASAPI Loopback en el sistema.")
+            logger.error("No WASAPI Loopback audio device found on this system.")
             return
 
         try:
-            logger.info("Abriendo grabador WASAPI Loopback en: %s (%d Hz)...", loopback_mic.name, self.sample_rate)
+            logger.info("Opening WASAPI Loopback recorder on: %s (%d Hz)...", loopback_mic.name, self.sample_rate)
             with loopback_mic.recorder(samplerate=self.sample_rate) as rec:
-                logger.info("Conexión WASAPI Loopback establecida y activa.")
+                logger.info("WASAPI Loopback connection established and active.")
                 while self._is_running.is_set():
                     if self._is_paused.is_set():
                         time.sleep(0.05)
                         continue
 
-                    # Grabación en el hilo dedicado
+                    # Record raw frames in worker thread
                     data = rec.record(numframes=self.block_size)
 
-                    # Si el dispositivo devuelve múltiples canales, convertir a mono promedio
+                    # Downmix multi-channel audio to mono float32
                     if data.ndim > 1 and data.shape[1] > 1:
                         mono_data = np.mean(data, axis=1, dtype=np.float32)
                     else:
                         mono_data = data.reshape(-1).astype(np.float32)
 
-                    # Cálculo dinámico del nivel RMS para el vúmetro de la UI
+                    # Compute RMS energy for GUI VU meter
                     rms = float(np.sqrt(np.mean(np.square(mono_data)))) if mono_data.size > 0 else 0.0
                     if self.on_audio_level:
                         try:
-                            # Factor de escala adaptado para reuniones (0.0 a 1.0)
+                            # Normalized scale for meeting audio
                             normalized_level = min(1.0, rms * 25.0)
                             self.on_audio_level(normalized_level)
                         except Exception:
                             pass
 
-                    # Inserción en cola no bloqueante con mitigación de lag
+                    # Non-blocking enqueue with lag mitigation
                     if self.audio_queue.full():
                         try:
-                            self.audio_queue.get_nowait()  # Descartar bloque más antiguo
+                            self.audio_queue.get_nowait()  # Drop oldest frame
                         except queue.Empty:
                             pass
 
@@ -224,6 +223,6 @@ class AudioCapture:
 
         except Exception as e:
             if self._is_running.is_set():
-                logger.error("Error crítico durante la captura de audio en bucle: %s", e, exc_info=True)
+                logger.error("Critical error in WASAPI Loopback capture: %s", e, exc_info=True)
         finally:
-            logger.info("Ciclo de captura finalizado.")
+            logger.info("Audio capture cycle terminated.")

@@ -1,8 +1,8 @@
 """
-LiveCopilot - Diálogo Visual de Configuración (PyQt6)
-Permite a cualquier usuario configurar su API Key de Groq con validación en vivo,
-elegir su dispositivo de salida de audio (auriculares, altavoces) y seleccionar el idioma
-sin necesidad de editar archivos ni usar comandos de consola.
+LiveCopilot - Visual Settings Dialog (PyQt6)
+Enables users to configure their Groq API Key with real-time live validation,
+select their audio output device (headphones, speakers), and choose language settings
+without editing files or running terminal commands.
 """
 
 import logging
@@ -34,8 +34,7 @@ logger = logging.getLogger("LiveCopilot.Settings")
 
 
 def get_env_path() -> str:
-    """Retorna la ruta al archivo .env tanto en modo script como compilado (.exe)."""
-    import sys
+    """Return the absolute path to the .env file in both development and frozen executable modes."""
     if getattr(sys, "frozen", False):
         base_dir = os.path.dirname(sys.executable)
     else:
@@ -44,9 +43,9 @@ def get_env_path() -> str:
 
 
 class SettingsDialog(QDialog):
-    """Ventana modal de configuración con diseño dark glassmorphism."""
+    """Configuration modal window with a dark glassmorphism design."""
 
-    # Señal emitida cuando el usuario guarda los cambios exitosamente
+    # Signal emitted when settings are saved successfully
     settings_saved = pyqtSignal(dict)
 
     def __init__(self, parent=None, is_first_run: bool = False):
@@ -59,8 +58,8 @@ class SettingsDialog(QDialog):
         self._load_current_values()
 
     def _init_window(self):
-        """Configuración de propiedades de ventana modal."""
-        self.setWindowTitle("Configuración de LiveCopilot")
+        """Configure modal window properties and behavior."""
+        self.setWindowTitle("LiveCopilot Settings")
         flags = Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
         if self.is_first_run:
             flags = (
@@ -73,7 +72,7 @@ class SettingsDialog(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setFixedSize(500, 540)
 
-        # Control de arrastre
+        # Drag tracking
         self._is_dragging = False
         self._drag_pos = None
 
@@ -93,7 +92,7 @@ class SettingsDialog(QDialog):
                 pass
 
     def _init_styles(self):
-        """Estilos CSS con paleta moderna oscura y acento verde menta."""
+        """CSS stylesheets featuring dark glassmorphism and mint green accent."""
         self.setStyleSheet("""
             QWidget#MainContainer {
                 background-color: rgba(18, 18, 18, 0.95);
@@ -216,11 +215,11 @@ class SettingsDialog(QDialog):
         """)
 
     def _build_ui(self):
-        """Construye la jerarquía visual de los campos."""
+        """Construct visual controls and field layout."""
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Contenedor con sombra perimetral
+        # Main frame with perimeter shadow
         self.container = QFrame(self)
         self.container.setObjectName("MainContainer")
         shadow = QGraphicsDropShadowEffect(self)
@@ -234,7 +233,7 @@ class SettingsDialog(QDialog):
         container_layout.setSpacing(10)
 
         # -------------------------------------------------------------
-        # Cabecera
+        # Header
         # -------------------------------------------------------------
         header_frame = QFrame(self.container)
         header_frame.setObjectName("HeaderBar")
@@ -243,10 +242,10 @@ class SettingsDialog(QDialog):
 
         header_info = QVBoxLayout()
         header_info.setSpacing(2)
-        title_text = "⚡ Bienvenido a LiveCopilot" if self.is_first_run else "⚙️ Configuración de LiveCopilot"
+        title_text = "⚡ Welcome to LiveCopilot" if self.is_first_run else "⚙️ LiveCopilot Settings"
         lbl_title = QLabel(title_text, header_frame)
         lbl_title.setObjectName("TitleLabel")
-        lbl_sub = QLabel("Personaliza tu API Key de Groq y tu salida de audio.", header_frame)
+        lbl_sub = QLabel("Configure your Groq API Key and audio output device.", header_frame)
         lbl_sub.setObjectName("SubtitleLabel")
         header_info.addWidget(lbl_title)
         header_info.addWidget(lbl_sub)
@@ -264,9 +263,9 @@ class SettingsDialog(QDialog):
         container_layout.addWidget(header_frame)
 
         # -------------------------------------------------------------
-        # Campo 1: GROQ_API_KEY
+        # Field 1: GROQ_API_KEY
         # -------------------------------------------------------------
-        lbl_api_key = QLabel("🔑 Clave API de Groq (Gratuita):", self.container)
+        lbl_api_key = QLabel("🔑 Groq API Key (Free):", self.container)
         lbl_api_key.setProperty("class", "FieldLabel")
         container_layout.addWidget(lbl_api_key)
 
@@ -279,21 +278,21 @@ class SettingsDialog(QDialog):
 
         self.btn_eye = QPushButton("👁️", self.container)
         self.btn_eye.setObjectName("BtnToggleEye")
-        self.btn_eye.setToolTip("Mostrar / Ocultar clave")
+        self.btn_eye.setToolTip("Show / Hide API Key")
         self.btn_eye.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_eye.clicked.connect(self._toggle_password_visibility)
         key_row.addWidget(self.btn_eye)
 
-        self.btn_verify = QPushButton("Verificar", self.container)
+        self.btn_verify = QPushButton("Verify", self.container)
         self.btn_verify.setObjectName("BtnVerifyKey")
-        self.btn_verify.setToolTip("Comprobar conexión con Groq")
+        self.btn_verify.setToolTip("Test connection with Groq")
         self.btn_verify.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_verify.clicked.connect(self._verify_api_key)
         key_row.addWidget(self.btn_verify)
 
         container_layout.addLayout(key_row)
 
-        # Estado de verificación y enlace de ayuda
+        # Key verification status & assistance link
         key_help_row = QHBoxLayout()
         self.lbl_key_status = QLabel("", self.container)
         self.lbl_key_status.setObjectName("StatusKeyLabel")
@@ -301,7 +300,7 @@ class SettingsDialog(QDialog):
         key_help_row.addStretch()
 
         lbl_link = QLabel(
-            '<a style="color: #38BDF8; text-decoration: none;" href="https://console.groq.com/keys">👉 Obtener clave gratis aquí</a>',
+            '<a style="color: #38BDF8; text-decoration: none;" href="https://console.groq.com/keys">👉 Get free API key here</a>',
             self.container,
         )
         lbl_link.setObjectName("HelpLink")
@@ -310,9 +309,9 @@ class SettingsDialog(QDialog):
         container_layout.addLayout(key_help_row)
 
         # -------------------------------------------------------------
-        # Campo 2: Dispositivo de Salida de Audio (Altavoces / Auriculares)
+        # Field 2: Audio Output Device (Speakers / Headphones Loopback)
         # -------------------------------------------------------------
-        lbl_device = QLabel("🎧 Salida de Audio a Escuchar (Reunión / Video):", self.container)
+        lbl_device = QLabel("🎧 Audio Output to Capture (Meetings / Calls / Video):", self.container)
         lbl_device.setProperty("class", "FieldLabel")
         container_layout.addWidget(lbl_device)
 
@@ -321,42 +320,42 @@ class SettingsDialog(QDialog):
         container_layout.addWidget(self.combo_device)
 
         lbl_device_hint = QLabel(
-            "Selecciona los auriculares o altavoces por donde escuchas a los demás.", self.container
+            "Select the headphones or speakers where you hear other participants.", self.container
         )
         lbl_device_hint.setStyleSheet("color: #6B7280; font-size: 11px;")
         container_layout.addWidget(lbl_device_hint)
 
         # -------------------------------------------------------------
-        # Campo 3: Modo de Idioma
+        # Field 3: Language Mode
         # -------------------------------------------------------------
-        lbl_lang = QLabel("🌐 Idioma de Entrada / Detección:", self.container)
+        lbl_lang = QLabel("🌐 Speech Detection / Target Language:", self.container)
         lbl_lang.setProperty("class", "FieldLabel")
         container_layout.addWidget(lbl_lang)
 
         self.combo_lang = QComboBox(self.container)
         self.combo_lang.setObjectName("LangCombo")
-        self.combo_lang.addItem("Autodetectar (Recomendado para clases y llamadas)", "auto")
-        self.combo_lang.addItem("Forzar Inglés (Speech en inglés)", "en")
-        self.combo_lang.addItem("Forzar Español (Speech en español)", "es")
+        self.combo_lang.addItem("Auto-detect (Recommended for calls & classes)", "auto")
+        self.combo_lang.addItem("Force English (English speech input)", "en")
+        self.combo_lang.addItem("Force Spanish (Spanish speech input)", "es")
         container_layout.addWidget(self.combo_lang)
 
         # -------------------------------------------------------------
-        # Campo 4: Longitud de Frase / Tiempo de Pausa (VAD)
+        # Field 4: Speech Duration / Pause Timeout (VAD)
         # -------------------------------------------------------------
-        lbl_timeout = QLabel("⏱️ Longitud del Texto Escuchado (Pausa de habla):", self.container)
+        lbl_timeout = QLabel("⏱️ Speech Pause Duration (VAD Silence Timeout):", self.container)
         lbl_timeout.setProperty("class", "FieldLabel")
         container_layout.addWidget(lbl_timeout)
 
         self.combo_timeout = QComboBox(self.container)
         self.combo_timeout.setObjectName("TimeoutCombo")
-        self.combo_timeout.addItem("Párrafos largos / Intervenciones completas (1.8 s de pausa) [Recomendado]", "1800")
-        self.combo_timeout.addItem("Modo continuo / Conferencias y clases (2.5 s de pausa)", "2500")
-        self.combo_timeout.addItem("Oraciones estándar (1.4 s de pausa)", "1400")
-        self.combo_timeout.addItem("Frases rápidas cortas (0.8 s de pausa)", "800")
+        self.combo_timeout.addItem("Long paragraphs / Full speech (1.8s pause) [Recommended]", "1800")
+        self.combo_timeout.addItem("Continuous mode / Lectures & webinars (2.5s pause)", "2500")
+        self.combo_timeout.addItem("Standard sentences (1.4s pause)", "1400")
+        self.combo_timeout.addItem("Short fast phrases (0.8s pause)", "800")
         container_layout.addWidget(self.combo_timeout)
 
         lbl_timeout_hint = QLabel(
-            "Un tiempo mayor permite capturar oraciones completas y párrafos antes de traducir.", self.container
+            "A longer pause duration captures complete sentences and thoughts before translating.", self.container
         )
         lbl_timeout_hint.setStyleSheet("color: #6B7280; font-size: 11px;")
         container_layout.addWidget(lbl_timeout_hint)
@@ -364,20 +363,20 @@ class SettingsDialog(QDialog):
         container_layout.addStretch()
 
         # -------------------------------------------------------------
-        # Botones de Acción
+        # Action Buttons
         # -------------------------------------------------------------
         btn_layout = QHBoxLayout()
         btn_layout.setContentsMargins(0, 10, 0, 0)
         btn_layout.addStretch()
 
         if not self.is_first_run:
-            self.btn_cancel = QPushButton("Cancelar", self.container)
+            self.btn_cancel = QPushButton("Cancel", self.container)
             self.btn_cancel.setObjectName("BtnCancel")
             self.btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
             self.btn_cancel.clicked.connect(self.reject)
             btn_layout.addWidget(self.btn_cancel)
 
-        self.btn_save = QPushButton("✓ Guardar y Comenzar" if self.is_first_run else "✓ Guardar Cambios", self.container)
+        self.btn_save = QPushButton("✓ Save & Launch" if self.is_first_run else "✓ Save Changes", self.container)
         self.btn_save.setObjectName("BtnSave")
         self.btn_save.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_save.clicked.connect(self._save_settings)
@@ -387,19 +386,19 @@ class SettingsDialog(QDialog):
         root_layout.addWidget(self.container)
 
     def _load_current_values(self):
-        """Carga los valores actuales del archivo .env y detecta dispositivos."""
+        """Load current configuration values from .env file and scan audio devices."""
         env_path = get_env_path()
         if os.path.exists(env_path):
             load_dotenv(env_path, override=True)
 
         current_key = os.getenv("GROQ_API_KEY", "").strip()
-        if current_key and not current_key.startswith("PEGA_AQUI"):
+        if current_key and not current_key.startswith("PASTE_YOUR"):
             self.input_key.setText(current_key)
 
         current_device_id = os.getenv("AUDIO_DEVICE_ID", "").strip()
         current_lang = os.getenv("TARGET_LANGUAGE", "auto").strip().lower()
 
-        # Cargar lista de dispositivos
+        # Populate audio output devices
         devices = AudioCapture.get_available_devices()
         self.combo_device.clear()
 
@@ -414,15 +413,15 @@ class SettingsDialog(QDialog):
         if devices:
             self.combo_device.setCurrentIndex(selected_idx)
         else:
-            self.combo_device.addItem("Altavoz / Auriculares del Sistema (Por defecto)", "")
+            self.combo_device.addItem("Default System Audio (WASAPI Loopback)", "")
 
-        # Seleccionar idioma
+        # Select language option
         for idx in range(self.combo_lang.count()):
             if self.combo_lang.itemData(idx) == current_lang:
                 self.combo_lang.setCurrentIndex(idx)
                 break
 
-        # Seleccionar tiempo de pausa VAD
+        # Select VAD timeout option
         current_timeout = os.getenv("VAD_SILENCE_TIMEOUT_MS", "1800").strip()
         for idx in range(self.combo_timeout.count()):
             if self.combo_timeout.itemData(idx) == current_timeout:
@@ -430,7 +429,7 @@ class SettingsDialog(QDialog):
                 break
 
     def _toggle_password_visibility(self):
-        """Alterna el modo de visualización de la clave API."""
+        """Toggle API key visibility mode."""
         if self.input_key.echoMode() == QLineEdit.EchoMode.Password:
             self.input_key.setEchoMode(QLineEdit.EchoMode.Normal)
             self.btn_eye.setText("🔒")
@@ -439,48 +438,48 @@ class SettingsDialog(QDialog):
             self.btn_eye.setText("👁️")
 
     def _verify_api_key(self):
-        """Valida la clave directamente con la API de Groq en tiempo real."""
+        """Validate the Groq API key in real-time."""
         key = self.input_key.text().strip()
         if not key or not key.startswith("gsk_"):
-            self.lbl_key_status.setText("❌ La clave debe empezar por 'gsk_'")
+            self.lbl_key_status.setText("❌ Key must start with 'gsk_'")
             self.lbl_key_status.setStyleSheet("color: #EF4444;")
             return
 
-        self.lbl_key_status.setText("⏳ Verificando con Groq...")
+        self.lbl_key_status.setText("⏳ Verifying with Groq...")
         self.lbl_key_status.setStyleSheet("color: #FBBF24;")
         self.btn_verify.setEnabled(False)
 
         try:
             from groq import Groq
             client = Groq(api_key=key, timeout=4.0)
-            res = client.chat.completions.create(
+            client.chat.completions.create(
                 model="qwen/qwen3.8-27b",
                 messages=[{"role": "user", "content": "ping"}],
                 max_tokens=5,
             )
-            self.lbl_key_status.setText("✓ Clave válida y lista para usar")
+            self.lbl_key_status.setText("✓ Key verified and ready to use")
             self.lbl_key_status.setStyleSheet("color: #10B981;")
         except Exception as e:
             err_str = str(e)
             if "invalid_api_key" in err_str or "401" in err_str:
-                self.lbl_key_status.setText("❌ Clave rechazada (no válida)")
+                self.lbl_key_status.setText("❌ Key rejected (invalid API key)")
             elif "rate_limit" in err_str or "429" in err_str:
-                self.lbl_key_status.setText("✓ Clave conectada correctamente")
+                self.lbl_key_status.setText("✓ Key connected successfully")
                 self.lbl_key_status.setStyleSheet("color: #10B981;")
             else:
-                self.lbl_key_status.setText(f"❌ Error al conectar: {err_str[:40]}")
+                self.lbl_key_status.setText(f"❌ Connection error: {err_str[:40]}")
             self.lbl_key_status.setStyleSheet("color: #EF4444;" if "❌" in self.lbl_key_status.text() else "color: #10B981;")
         finally:
             self.btn_verify.setEnabled(True)
 
     def _save_settings(self):
-        """Guarda los valores en .env y emite la señal de actualización."""
+        """Save updated values into .env and emit settings_saved signal."""
         key = self.input_key.text().strip()
         if not key or not key.startswith("gsk_"):
             QMessageBox.warning(
                 self,
-                "Clave Requerida",
-                "Por favor introduce una API Key válida de Groq (comienza con 'gsk_').\nPuedes obtenerla gratis en https://console.groq.com/keys",
+                "API Key Required",
+                "Please enter a valid Groq API Key (starts with 'gsk_').\nYou can obtain one for free at https://console.groq.com/keys",
             )
             return
 
@@ -488,7 +487,7 @@ class SettingsDialog(QDialog):
         target_lang = self.combo_lang.currentData()
         timeout_ms = self.combo_timeout.currentData() or "1800"
 
-        # Guardar en archivo .env
+        # Update or create .env file
         env_path = get_env_path()
         env_content = {}
         if os.path.exists(env_path):
@@ -499,7 +498,7 @@ class SettingsDialog(QDialog):
                         k, v = line.split("=", 1)
                         env_content[k.strip()] = v.strip()
 
-        # Actualizar valores
+        # Update values
         env_content["GROQ_API_KEY"] = key
         env_content["AUDIO_DEVICE_ID"] = device_id or ""
         env_content["TARGET_LANGUAGE"] = target_lang or "auto"
@@ -507,17 +506,17 @@ class SettingsDialog(QDialog):
         env_content["STT_MODE"] = "cloud"
         env_content["LLM_PROVIDER"] = "groq"
 
-        # Escribir archivo actualizado
+        # Write updated file
         try:
             with open(env_path, "w", encoding="utf-8") as f:
-                f.write("# LiveCopilot - Configuración de Variables de Entorno\n\n")
+                f.write("# LiveCopilot - Environment Configuration\n\n")
                 for k, v in env_content.items():
                     f.write(f"{k}={v}\n")
-            logger.info("Configuración guardada en %s", env_path)
+            logger.info("Configuration saved successfully to %s", env_path)
         except Exception as e:
-            logger.error("Error al guardar .env: %s", e)
+            logger.error("Failed to save .env: %s", e)
 
-        # Actualizar en variables de proceso
+        # Update active process environment
         os.environ["GROQ_API_KEY"] = key
         os.environ["AUDIO_DEVICE_ID"] = device_id or ""
         os.environ["TARGET_LANGUAGE"] = target_lang or "auto"
@@ -532,7 +531,7 @@ class SettingsDialog(QDialog):
         self.settings_saved.emit(payload)
         self.accept()
 
-    # Arrastre de la ventana
+    # Drag window handlers
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self._is_dragging = True

@@ -1,7 +1,7 @@
 """
-LiveCopilot - Interfaz de Usuario (HUD Flotante Minimalista en PyQt6)
-Ventana sin bordes, semi-transparente, fijada al frente, arrastrable y
-con rendimiento a 60 FPS garantizado.
+LiveCopilot - Minimalist Floating Heads-Up Display (PyQt6)
+Frameless, semi-transparent, pinned on top, draggable HUD
+with guaranteed 60 FPS performance and Windows taskbar integration.
 """
 
 import logging
@@ -29,18 +29,18 @@ logger = logging.getLogger("LiveCopilot.UI")
 
 
 def get_app_icon() -> QIcon:
-    """Genera un icono nítido de alta resolución para la barra de tareas de Windows."""
+    """Generate a crisp high-resolution icon for the Windows taskbar and system window."""
     pixmap = QPixmap(64, 64)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-    # Fondo redondeado oscuro con borde cian brillante
+    # Dark rounded background with glowing cyan border
     painter.setBrush(QColor(18, 18, 18, 240))
     painter.setPen(QPen(QColor(0, 245, 212), 2))
     painter.drawRoundedRect(4, 4, 56, 56, 14, 14)
 
-    # Símbolo ⚡
+    # Lightning bolt symbol ⚡
     painter.setPen(QPen(QColor(0, 245, 212)))
     font = QFont("Segoe UI Emoji", 26)
     font.setBold(True)
@@ -52,11 +52,11 @@ def get_app_icon() -> QIcon:
 
 class FloatingHUD(QWidget):
     """
-    HUD Flotante semi-transparente para proyección de transcripciones
-    y sugerencias de IA en tiempo real.
+    Semi-transparent floating HUD for projecting real-time speech transcription
+    and AI conversational suggestions.
     """
 
-    # Señales para comunicación desacoplada
+    # Signals for decoupled communication
     request_toggle_pause = pyqtSignal()
     request_clear = pyqtSignal()
     request_open_settings = pyqtSignal()
@@ -64,11 +64,11 @@ class FloatingHUD(QWidget):
     def __init__(self):
         super().__init__()
 
-        # Control de arrastre
+        # Drag tracking
         self._is_dragging = False
         self._drag_position = QPoint()
 
-        # Estado interno
+        # Internal state
         self.is_paused = False
         self.always_on_top = True
 
@@ -77,7 +77,7 @@ class FloatingHUD(QWidget):
         self._build_ui()
 
     def _init_window_properties(self):
-        """Configuración de flags para HUD flotante visible en la barra de tareas de Windows."""
+        """Configure window flags for a frameless floating HUD visible in the Windows taskbar."""
         self.setWindowTitle("LiveCopilot")
         self.setWindowFlags(
             Qt.WindowType.Window
@@ -91,7 +91,7 @@ class FloatingHUD(QWidget):
         self.setMinimumSize(480, 360)
         self.resize(580, 460)
 
-        # Ubicar en la esquina inferior derecha por defecto (típico para copilotos)
+        # Position at the bottom-right corner by default (optimal for desktop co-pilots)
         screen = QApplication.primaryScreen()
         if screen:
             screen_geo = screen.availableGeometry()
@@ -100,7 +100,7 @@ class FloatingHUD(QWidget):
             self.move(max(20, x), max(20, y))
 
     def _force_windows_taskbar(self):
-        """Asegura que Windows registre la ventana frameless explícitamente en la barra de tareas."""
+        """Ensure Windows explicitly registers the frameless window in the taskbar."""
         if sys.platform == "win32":
             try:
                 import ctypes
@@ -117,14 +117,14 @@ class FloatingHUD(QWidget):
                     0x0020 | 0x0002 | 0x0001 | 0x0004 | 0x0010
                 )
             except Exception as e:
-                logger.debug(f"Error forzando presencia en barra de tareas: {e}")
+                logger.debug("Error enforcing Windows taskbar presence: %s", e)
 
     def showEvent(self, event):
         super().showEvent(event)
         self._force_windows_taskbar()
 
     def _init_styles(self):
-        """Estilos CSS con paleta moderna oscura, acento cian/menta y glassmorphism."""
+        """CSS stylesheets featuring modern dark glassmorphism and mint/cyan accents."""
         self.setStyleSheet("""
             QWidget#MainContainer {
                 background-color: rgba(18, 18, 18, 0.90);
@@ -132,7 +132,7 @@ class FloatingHUD(QWidget):
                 border-radius: 16px;
             }
             
-            /* Barra Superior */
+            /* Header Bar */
             QFrame#HeaderBar {
                 background: transparent;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.07);
@@ -158,7 +158,7 @@ class FloatingHUD(QWidget):
                 font-weight: 500;
             }
             
-            /* Botones de Cabecera */
+            /* Header Action Buttons */
             QPushButton.HeaderBtn {
                 background-color: rgba(255, 255, 255, 0.05);
                 color: #CCCCCC;
@@ -184,7 +184,7 @@ class FloatingHUD(QWidget):
                 border: 1px solid rgba(239, 68, 68, 0.9);
             }
             
-            /* Bloques de Contenido */
+            /* Content Cards */
             QFrame#CardHeard {
                 background-color: rgba(25, 28, 32, 0.70);
                 border: 1px solid rgba(255, 255, 255, 0.07);
@@ -260,7 +260,7 @@ class FloatingHUD(QWidget):
                 margin-top: 2px;
             }
             
-            /* Medidor de audio */
+            /* Audio VU Meter */
             QProgressBar#AudioMeter {
                 background-color: rgba(255, 255, 255, 0.08);
                 border-radius: 2px;
@@ -272,7 +272,7 @@ class FloatingHUD(QWidget):
                 border-radius: 2px;
             }
             
-            /* Pie de estado */
+            /* Footer Metrics */
             QLabel#FooterMetrics {
                 color: #6B7280;
                 font-family: 'Consolas', monospace;
@@ -295,12 +295,11 @@ class FloatingHUD(QWidget):
         """)
 
     def _build_ui(self):
-        """Construye la jerarquía visual del HUD."""
-        # Layout raíz
+        """Construct the visual component hierarchy for the HUD."""
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Contenedor con efecto de sombra perimetral
+        # Outer container with drop shadow
         self.container = QFrame(self)
         self.container.setObjectName("MainContainer")
         shadow = QGraphicsDropShadowEffect(self)
@@ -314,7 +313,7 @@ class FloatingHUD(QWidget):
         container_layout.setSpacing(8)
 
         # -------------------------------------------------------------
-        # 1. Barra Superior (Header & Controls)
+        # 1. Top Header Bar (Title, LED status & Window Controls)
         # -------------------------------------------------------------
         self.header_frame = QFrame(self.container)
         self.header_frame.setObjectName("HeaderBar")
@@ -322,14 +321,14 @@ class FloatingHUD(QWidget):
         header_layout.setContentsMargins(0, 0, 0, 4)
         header_layout.setSpacing(8)
 
-        # Título y LED de estado
+        # Status indicator and title
         self.status_dot = QLabel("🟢", self.header_frame)
         self.status_dot.setObjectName("StatusDot")
 
         self.title_label = QLabel("⚡ LiveCopilot", self.header_frame)
         self.title_label.setObjectName("AppTitle")
 
-        self.status_label = QLabel("Escuchando...", self.header_frame)
+        self.status_label = QLabel("Listening...", self.header_frame)
         self.status_label.setObjectName("StatusText")
 
         header_layout.addWidget(self.status_dot)
@@ -337,42 +336,42 @@ class FloatingHUD(QWidget):
         header_layout.addWidget(self.status_label)
         header_layout.addStretch()
 
-        # Botón de Pausa / Reanudar
-        self.btn_pause = QPushButton("⏸ Pausar", self.header_frame)
+        # Pause / Resume Button
+        self.btn_pause = QPushButton("⏸ Pause", self.header_frame)
         self.btn_pause.setObjectName("BtnPause")
         self.btn_pause.setProperty("class", "HeaderBtn")
         self.btn_pause.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pause.clicked.connect(self._toggle_pause_action)
 
-        # Botón Limpiar
+        # Clear Button
         self.btn_clear = QPushButton("🧹", self.header_frame)
         self.btn_clear.setObjectName("BtnClear")
         self.btn_clear.setProperty("class", "HeaderBtn")
-        self.btn_clear.setToolTip("Limpiar texto actual")
+        self.btn_clear.setToolTip("Clear current display")
         self.btn_clear.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_clear.clicked.connect(self._clear_content)
 
-        # Botón Ajustes
+        # Settings Button
         self.btn_settings = QPushButton("⚙️", self.header_frame)
         self.btn_settings.setObjectName("BtnSettings")
         self.btn_settings.setProperty("class", "HeaderBtn")
-        self.btn_settings.setToolTip("Configuración (API Key y Dispositivo de Audio)")
+        self.btn_settings.setToolTip("Settings (API Keys & Audio Device)")
         self.btn_settings.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_settings.clicked.connect(self.request_open_settings.emit)
 
-        # Botón Minimizar
+        # Minimize Button
         self.btn_minimize = QPushButton("🗕", self.header_frame)
         self.btn_minimize.setObjectName("BtnMinimize")
         self.btn_minimize.setProperty("class", "HeaderBtn")
-        self.btn_minimize.setToolTip("Minimizar a la barra de tareas")
+        self.btn_minimize.setToolTip("Minimize to taskbar")
         self.btn_minimize.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_minimize.clicked.connect(self.showMinimized)
 
-        # Botón Cerrar
+        # Close Button
         self.btn_close = QPushButton("✕", self.header_frame)
         self.btn_close.setObjectName("CloseBtn")
         self.btn_close.setProperty("class", "HeaderBtn")
-        self.btn_close.setToolTip("Cerrar LiveCopilot")
+        self.btn_close.setToolTip("Exit LiveCopilot")
         self.btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_close.clicked.connect(self.close)
 
@@ -384,7 +383,7 @@ class FloatingHUD(QWidget):
 
         container_layout.addWidget(self.header_frame)
 
-        # Mini Vúmetro de Audio
+        # Audio VU Level Meter
         self.audio_meter = QProgressBar(self.container)
         self.audio_meter.setObjectName("AudioMeter")
         self.audio_meter.setRange(0, 100)
@@ -393,7 +392,7 @@ class FloatingHUD(QWidget):
         container_layout.addWidget(self.audio_meter)
 
         # -------------------------------------------------------------
-        # 2. Bloque 1: Escuchado (Gris Claro) + Traducción
+        # 2. Block 1: Heard Speech (Original & Translation)
         # -------------------------------------------------------------
         self.card_heard = QFrame(self.container)
         self.card_heard.setObjectName("CardHeard")
@@ -402,12 +401,12 @@ class FloatingHUD(QWidget):
         layout_heard.setSpacing(4)
 
         heard_tag_layout = QHBoxLayout()
-        self.label_heard_tag = QLabel("🎧 ESCUCHADO (ORIGINAL & TRADUCCIÓN)", self.card_heard)
+        self.label_heard_tag = QLabel("🎧 HEARD (ORIGINAL & TRANSLATION)", self.card_heard)
         self.label_heard_tag.setObjectName("LabelHeardTag")
         heard_tag_layout.addWidget(self.label_heard_tag)
         heard_tag_layout.addStretch()
 
-        self.text_heard = QLabel("Esperando audio del sistema (WASAPI)...", self.card_heard)
+        self.text_heard = QLabel("Waiting for system audio (WASAPI loopback)...", self.card_heard)
         self.text_heard.setObjectName("TextHeardContent")
         self.text_heard.setWordWrap(True)
         self.text_heard.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -424,7 +423,7 @@ class FloatingHUD(QWidget):
         container_layout.addWidget(self.card_heard)
 
         # -------------------------------------------------------------
-        # 3. Bloque 2: Sugerencia IA (Inglés + Fonética + Significado)
+        # 3. Block 2: AI Suggestion (English + Phonetics + Meaning)
         # -------------------------------------------------------------
         self.card_sug = QFrame(self.container)
         self.card_sug.setObjectName("CardSuggestion")
@@ -433,12 +432,12 @@ class FloatingHUD(QWidget):
         layout_sug.setSpacing(5)
 
         sug_tag_layout = QHBoxLayout()
-        self.label_sug_tag = QLabel("💡 CÓMO RESPONDER (INGLÉS & PRONUNCIACIÓN)", self.card_sug)
+        self.label_sug_tag = QLabel("💡 HOW TO RESPOND (ENGLISH & PRONUNCIATION)", self.card_sug)
         self.label_sug_tag.setObjectName("LabelSugTag")
 
-        self.btn_copy = QPushButton("Copiar", self.card_sug)
+        self.btn_copy = QPushButton("Copy", self.card_sug)
         self.btn_copy.setObjectName("CopyBtn")
-        self.btn_copy.setToolTip("Copiar frase en inglés al portapapeles")
+        self.btn_copy.setToolTip("Copy English phrase to clipboard")
         self.btn_copy.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_copy.clicked.connect(self._copy_suggestion_to_clipboard)
 
@@ -446,20 +445,20 @@ class FloatingHUD(QWidget):
         sug_tag_layout.addStretch()
         sug_tag_layout.addWidget(self.btn_copy)
 
-        # 1. Frase en inglés para decir
-        self.text_sug = QLabel("Las respuestas rápidas aparecerán aquí...", self.card_sug)
+        # 1. Suggested phrase in English to speak
+        self.text_sug = QLabel("Smart response suggestions will appear here...", self.card_sug)
         self.text_sug.setObjectName("TextSugContent")
         self.text_sug.setWordWrap(True)
         self.text_sug.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
-        # 2. Guía fonética aproximada
+        # 2. Phonetic pronunciation guide
         self.text_sug_pron = QLabel("", self.card_sug)
         self.text_sug_pron.setObjectName("TextSugPron")
         self.text_sug_pron.setWordWrap(True)
         self.text_sug_pron.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.text_sug_pron.setVisible(False)
 
-        # 3. Significado en español
+        # 3. Meaning / translation in native language
         self.text_sug_es = QLabel("", self.card_sug)
         self.text_sug_es.setObjectName("TextSugEs")
         self.text_sug_es.setWordWrap(True)
@@ -473,7 +472,7 @@ class FloatingHUD(QWidget):
         container_layout.addWidget(self.card_sug)
 
         # -------------------------------------------------------------
-        # 4. Pie de estado y métricas de latencia
+        # 4. Footer Status & Latency Metrics
         # -------------------------------------------------------------
         footer_layout = QHBoxLayout()
         footer_layout.setContentsMargins(2, 2, 2, 0)
@@ -482,7 +481,7 @@ class FloatingHUD(QWidget):
         footer_layout.addWidget(self.footer_metrics)
         footer_layout.addStretch()
 
-        # Agarre para redimensionar libremente la ventana con el ratón
+        # Window resize grip (bottom right)
         self.size_grip = QSizeGrip(self.container)
         self.size_grip.setStyleSheet("width: 12px; height: 12px;")
         footer_layout.addWidget(self.size_grip)
@@ -491,11 +490,10 @@ class FloatingHUD(QWidget):
         root_layout.addWidget(self.container)
 
     # -----------------------------------------------------------------
-    # Gestión de Arrastre de Ventana (Drag & Drop desde cualquier punto del header)
+    # Window Drag Management (Drag from header or window frame)
     # -----------------------------------------------------------------
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            # Arrastrable desde cualquier zona superior o fondo del contenedor
             if event.position().y() < 60:
                 self._is_dragging = True
                 self._drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
@@ -510,58 +508,58 @@ class FloatingHUD(QWidget):
         self._is_dragging = False
 
     # -----------------------------------------------------------------
-    # Slots y Actualizaciones de la Interfaz
+    # Slots & UI Updates
     # -----------------------------------------------------------------
     def update_transcription(self, text: str, latency_ms: float = 0.0, engine_name: str = ""):
-        """Actualiza el Bloque 1 con el audio escuchado y prepara la traducción."""
+        """Update Block 1 with the transcribed audio and prepare translation state."""
         if not text:
             return
         self.text_heard.setText(text)
-        self.text_heard_trans.setText("🌐 Traduciendo...")
+        self.text_heard_trans.setText("🌐 Translating...")
         self.text_heard_trans.setVisible(True)
         if latency_ms > 0:
             self._update_footer(stt_ms=latency_ms, engine=engine_name)
 
     def update_suggestion(self, data, latency_ms: float = 0.0, provider_name: str = ""):
         """
-        Actualiza el Bloque 2 con la respuesta sugerida, la pronunciación fonética
-        y el significado, además de actualizar la traducción en el Bloque 1.
+        Update Block 2 with the suggested response, phonetic pronunciation,
+        and meaning, while updating the translation in Block 1.
         """
         if not data:
             return
 
         if isinstance(data, dict):
-            # 1. Traducción al español de lo que se escuchó
-            trad_escuchado = data.get("trad_escuchado", "").strip()
-            if trad_escuchado:
-                self.text_heard_trans.setText(f"🌐 Trad: {trad_escuchado}")
+            # 1. Translation of what was heard
+            heard_trans = (data.get("heard_trans") or data.get("trad_escuchado", "")).strip()
+            if heard_trans:
+                self.text_heard_trans.setText(f"🌐 Trans: {heard_trans}")
                 self.text_heard_trans.setVisible(True)
             else:
                 self.text_heard_trans.setVisible(False)
 
-            # 2. Frase para responder en inglés
-            respuesta = data.get("respuesta", "").strip()
-            if respuesta:
-                self.text_sug.setText(respuesta)
+            # 2. Suggested phrase in English
+            response = (data.get("response") or data.get("respuesta", "")).strip()
+            if response:
+                self.text_sug.setText(response)
 
-            # 3. Guía de pronunciación fonética en español
-            pron = data.get("pronunciacion", "").strip()
+            # 3. Phonetic pronunciation guide
+            pron = (data.get("pronunciation") or data.get("pronunciacion", "")).strip()
             if pron:
-                self.text_sug_pron.setText(f"🗣️ Pronuncia: \"{pron}\"")
+                self.text_sug_pron.setText(f"🗣️ Say: \"{pron}\"")
                 self.text_sug_pron.setVisible(True)
             else:
                 self.text_sug_pron.setVisible(False)
 
-            # 4. Significado en español de lo que va a responder
-            trad_resp = data.get("trad_respuesta", "").strip()
-            if trad_resp:
-                self.text_sug_es.setText(f"🌐 Significado: {trad_resp}")
+            # 4. Meaning of the response
+            meaning = (data.get("meaning") or data.get("trad_respuesta", "")).strip()
+            if meaning:
+                self.text_sug_es.setText(f"🌐 Meaning: {meaning}")
                 self.text_sug_es.setVisible(True)
             else:
                 self.text_sug_es.setVisible(False)
 
         else:
-            # Fallback si llega string simple
+            # Fallback if raw text string is received
             self.text_sug.setText(str(data))
             self.text_sug_pron.setVisible(False)
             self.text_sug_es.setVisible(False)
@@ -570,15 +568,14 @@ class FloatingHUD(QWidget):
             self._update_footer(llm_ms=latency_ms, provider=provider_name)
 
     def update_audio_level(self, level: float):
-        """Actualiza el valor del medidor VU de audio (0.0 a 1.0)."""
-        # Suavizado en escala porcentual 0-100
+        """Update audio VU meter bar value (0.0 to 1.0)."""
         val = int(min(1.0, max(0.0, level)) * 100)
         self.audio_meter.setValue(val)
 
     def set_status(self, status: str, state_type: str = "active"):
         """
-        Actualiza el estado visual:
-        state_type: 'active' (verde), 'processing' (ámbar), 'paused' (gris)
+        Update visual status indicator:
+        state_type: 'active' (green/cyan), 'processing' (amber), 'paused' (gray), 'error' (red)
         """
         self.status_label.setText(status)
         if state_type == "active":
@@ -601,7 +598,7 @@ class FloatingHUD(QWidget):
         engine: str = "",
         provider: str = "",
     ):
-        """Actualiza las métricas de rendimiento en milisegundos."""
+        """Update inference performance metrics in milliseconds."""
         current = self.footer_metrics.text()
         stt_part = f"STT: {int(stt_ms)}ms ({engine})" if stt_ms is not None else ""
         llm_part = f"LLM: {int(llm_ms)}ms ({provider})" if llm_ms is not None else ""
@@ -616,26 +613,26 @@ class FloatingHUD(QWidget):
             self.footer_metrics.setText(" | ".join(parts))
 
     def _toggle_pause_action(self):
-        """Alterna el estado de pausa de la escucha."""
+        """Toggle audio listening pause state."""
         self.is_paused = not self.is_paused
         if self.is_paused:
-            self.btn_pause.setText("▶ Reanudar")
+            self.btn_pause.setText("▶ Resume")
             self.btn_pause.setStyleSheet("color: #10B981; border-color: rgba(16, 185, 129, 0.4);")
-            self.set_status("Pausado", "paused")
+            self.set_status("Paused", "paused")
         else:
-            self.btn_pause.setText("⏸ Pausar")
+            self.btn_pause.setText("⏸ Pause")
             self.btn_pause.setStyleSheet("")
-            self.set_status("Escuchando...", "active")
+            self.set_status("Listening...", "active")
 
         self.request_toggle_pause.emit()
 
     def _clear_content(self):
-        """Limpia las tarjetas de texto."""
-        self.text_heard.setText("Esperando audio del sistema...")
+        """Clear all content text cards."""
+        self.text_heard.setText("Waiting for system audio...")
         self.text_heard_trans.setText("")
         self.text_heard_trans.setVisible(False)
 
-        self.text_sug.setText("Las respuestas rápidas aparecerán aquí...")
+        self.text_sug.setText("Smart response suggestions will appear here...")
         self.text_sug_pron.setText("")
         self.text_sug_pron.setVisible(False)
         self.text_sug_es.setText("")
@@ -644,10 +641,10 @@ class FloatingHUD(QWidget):
         self.request_clear.emit()
 
     def _copy_suggestion_to_clipboard(self):
-        """Copia la sugerencia activa al portapapeles de Windows."""
+        """Copy active English suggestion to Windows clipboard."""
         text = self.text_sug.text().strip()
-        if text and text != "Las respuestas rápidas aparecerán aquí...":
+        if text and text != "Smart response suggestions will appear here...":
             clipboard = QApplication.clipboard()
             clipboard.setText(text)
-            self.btn_copy.setText("✓ Copiado")
-            QTimer.singleShot(1500, lambda: self.btn_copy.setText("Copiar"))
+            self.btn_copy.setText("✓ Copied")
+            QTimer.singleShot(1500, lambda: self.btn_copy.setText("Copy"))
